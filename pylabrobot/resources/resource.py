@@ -44,7 +44,10 @@ class Resource:
     size_y: float,
     size_z: float,
     category: Optional[str] = None,
-    model: Optional[str] = None
+    model: Optional[str] = None,
+    corner_offset_x: Optional[float] = 0.0,
+    corner_offset_y: Optional[float] = 0.0,
+    corner_offset_z: Optional[float] = 0.0,
   ):
     self._name = name
     self._size_x = size_x
@@ -52,6 +55,9 @@ class Resource:
     self._size_z = size_z
     self.category = category
     self.model = model
+    self._corner_offset_x = corner_offset_x
+    self._corner_offset_y = corner_offset_y
+    self._corner_offset_z = corner_offset_z
 
     self.location: Optional[Coordinate] = None
     self.parent: Optional[Resource] = None
@@ -144,6 +150,15 @@ class Resource:
   def get_size_z(self) -> float:
     """ Get the size of this resource in the z-direction. """
     return self._size_z
+
+  def get_corner_offset_x(self) -> float:
+    return self._corner_offset_x
+
+  def get_corner_offset_y(self) -> float:
+    return self._corner_offset_y
+
+  def get_corner_offset_z(self) -> float:
+    return self._corner_offset_z
 
   def assign_child_resource(
     self,

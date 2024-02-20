@@ -186,9 +186,9 @@ class OpentronsBackend(LiquidHandlerBackend):
       },
       "ordering": ordering,
       "cornerOffsetFromSlot":{
-        "x": 0,
-        "y": 0,
-        "z": 0
+        "x": resource.get_corner_offset_x(),
+        "y": resource.get_corner_offset_y(),
+        "z": resource.get_corner_offset_z(),
       },
       "dimensions":{
         "xDimension": resource.get_size_x(),
