@@ -45,9 +45,9 @@ class Resource:
     size_z: float,
     category: Optional[str] = None,
     model: Optional[str] = None,
-    corner_offset_x: Optional[float] = 0.0,
-    corner_offset_y: Optional[float] = 0.0,
-    corner_offset_z: Optional[float] = 0.0,
+    corner_offset_x: float = 0.0,
+    corner_offset_y: float = 0.0,
+    corner_offset_z: float = 0.0,
   ):
     self._name = name
     self._size_x = size_x

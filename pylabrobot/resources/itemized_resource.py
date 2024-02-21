@@ -36,9 +36,9 @@ class ItemizedResource(Resource, Generic[T], metaclass=ABCMeta):
                 num_items_y: Optional[int] = None,
                 category: Optional[str] = None,
                 model: Optional[str] = None,
-                corner_offset_x: Optional[float] = 0.0,
-                corner_offset_y: Optional[float] = 0.0,
-                corner_offset_z: Optional[float] = 0.0):
+                corner_offset_x: float = 0.0,
+                corner_offset_y: float = 0.0,
+                corner_offset_z: float = 0.0):
     """ Initialize an itemized resource
 
     Args:
