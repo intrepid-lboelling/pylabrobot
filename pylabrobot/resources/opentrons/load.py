@@ -4,6 +4,7 @@ from typing import Union, List, TYPE_CHECKING, cast
 
 try:
   import opentrons_shared_data.labware
+
   USE_OT = True
 except ImportError:
   USE_OT = False
@@ -13,6 +14,7 @@ from pylabrobot.resources.plate import Plate
 from pylabrobot.resources.tip import Tip, TipCreator
 from pylabrobot.resources.tip_rack import TipRack, TipSpot
 from pylabrobot.resources.well import Well
+from pylabrobot.resources.container import Container
 
 if TYPE_CHECKING:
   from opentrons_shared_data.labware.dev_types import LabwareDefinition
@@ -37,9 +39,9 @@ def ot_definition_to_resource(
   size_y = data["dimensions"]["yDimension"]
   size_z = data["dimensions"]["zDimension"]
 
-  if display_category in ["wellPlate", "tipRack"]:
+  if display_category in ["wellPlate", "reservoir", "tipRack"]:
     items = data["ordering"]
-    wells: List[List[Union[TipSpot, Well]]] = [] # TODO: can we use TypeGuard?
+    wells: List[List[Union[TipSpot, Well, Container]]] = []  # TODO: can we use TypeGuard?
 
     def volume_from_name(name: str) -> float:
       # like "Opentrons 96 Filter Tip Rack 200 µL"
@@ -76,6 +78,16 @@ def ot_definition_to_resource(
           )
           well.location = location
           wells[i].append(well)
+        elif display_category == "reservoir":
+          container = Container(
+            name=item,
+            size_x=well_size_x,
+            size_y=well_size_y,
+            size_z=well_size_z,
+          )
+          offset = Coordinate(-well_size_x / 2, -well_size_y / 2, 0)
+          container.location = location + offset
+          wells[i].append(container)
         else:
           # closure
           def make_make_tip(well_data) -> TipCreator:
@@ -87,6 +99,7 @@ def ot_definition_to_resource(
                 maximal_volume=volume_from_name(data["metadata"]["displayName"]),
                 fitting_depth=data["parameters"]["tipOverlap"]
               )
+
             return make_tip
 
           tip_spot = TipSpot(
@@ -99,6 +112,15 @@ def ot_definition_to_resource(
           wells[i].append(tip_spot)
 
     if display_category == "wellPlate":
+      return Plate(
+        name=name,
+        size_x=size_x,
+        size_y=size_y,
+        size_z=size_z,
+        items=cast(List[List[Well]], wells),
+        model=data["metadata"]["displayName"]
+      )
+    elif display_category == "reservoir":
       return Plate(
         name=name,
         size_x=size_x,

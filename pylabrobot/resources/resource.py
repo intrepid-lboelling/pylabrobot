@@ -133,9 +133,10 @@ class Resource:
     """ Get the absolute location of this resource, probably within the
     :class:`pylabrobot.resources.Deck`. """
     assert self.location is not None, "Resource has no location."
+    offset = Coordinate(self.get_corner_offset_x(), self.get_corner_offset_y(), self.get_corner_offset_z())
     if self.parent is None:
-      return self.location
-    return self.parent.get_absolute_location() + self.location
+      return self.location + offset
+    return self.parent.get_absolute_location() + self.location + offset
 
   def get_size_x(self) -> float:
     if self.rotation in {90, 270}:
