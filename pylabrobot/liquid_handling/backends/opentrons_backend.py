@@ -472,7 +472,6 @@ class OpentronsBackend(LiquidHandlerBackend):
 
   async def dispense(self, ops: List[Dispense], use_channels: List[int]):
     """ Dispense liquid from the specified resource using pip. """
-
     assert len(ops) == 1, "only one channel supported for now"
     assert use_channels == [0], "manual channel selection not supported on OT for now"
     op = ops[0]
@@ -495,8 +494,13 @@ class OpentronsBackend(LiquidHandlerBackend):
     else:
       offset_x = offset_y = offset_z = 0
 
+
     ot_api.lh.dispense(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
       volume=volume, flow_rate=flow_rate, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
+
+    if op.blow_out_air_volume != 0:
+      ot_api.lh.blowout(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
+        flow_rate=flow_rate, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
 
   async def home(self):
     """ Home the robot """

@@ -30,8 +30,8 @@ extras_venus = [
 ]
 
 extras_opentrons = [
-  "opentrons-http-api-client",
-  "opentrons-shared-data"
+  "opentrons-http-api-client @ git+https://github.com/intrepid-lboelling/opentrons-python-api.git",
+  "opentrons-shared-data",
 ]
 
 extras_server = [
