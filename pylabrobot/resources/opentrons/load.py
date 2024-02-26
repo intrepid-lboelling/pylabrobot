@@ -85,8 +85,8 @@ def ot_definition_to_resource(
                         size_z=well_size_z,
                         max_volume=max_volume,
                     )
-                    #offset = Coordinate(-well_size_x / 2, -well_size_y / 2, 0)
-                    well.location = location #+ offset
+                    offset = Coordinate(-well_size_x / 2, -well_size_y / 2, 0)
+                    well.location = location + offset
                     wells[i].append(well)
                 elif display_category == "reservoir":
                     assert max_volume is not None
