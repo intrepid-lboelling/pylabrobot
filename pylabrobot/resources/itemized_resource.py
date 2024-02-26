@@ -318,7 +318,7 @@ class ItemizedResource(Resource, Generic[T], metaclass=ABCMeta):
       indices = list(range(self.num_items))
     elif direction == "right":
       # Start at the top left, and go right in each row
-      indices = [(8*y+x) for x in range(8) for y in range(0, 12)]
+      indices = [(self.num_items_y*y+x) for x in range(self.num_items_y) for y in range(0, self.num_items_x)]
     elif direction == "left":
       # Start at the top right, and go left in each row
       indices = [(8*y+x) for x in range(8) for y in range(11, -1, -1)]
