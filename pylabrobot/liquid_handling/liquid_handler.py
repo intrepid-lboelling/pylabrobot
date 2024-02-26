@@ -593,8 +593,8 @@ class LiquidHandler(Machine):
     end_delay: float = 0,
     offsets: Union[Optional[Coordinate], Sequence[Optional[Coordinate]]] = None,
     liquid_height: Union[Optional[float], List[Optional[float]]] = None,
-    **backend_kwargs
-  ):
+    **backend_kwargs: Any
+  ) -> None:
     """ Aspirate liquid from the specified wells.
 
     Examples:
