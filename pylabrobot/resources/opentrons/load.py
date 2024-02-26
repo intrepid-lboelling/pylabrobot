@@ -14,7 +14,7 @@ from pylabrobot.resources.plate import Plate
 from pylabrobot.resources.tip import Tip, TipCreator
 from pylabrobot.resources.tip_rack import TipRack, TipSpot
 from pylabrobot.resources.well import Well
-from pylabrobot.resources.container import Container
+from pylabrobot.resources.trough import Trough
 
 if TYPE_CHECKING:
     from opentrons_shared_data.labware.dev_types import LabwareDefinition
@@ -43,7 +43,7 @@ def ot_definition_to_resource(
 
     if display_category in ["wellPlate", "reservoir", "tipRack"]:
         items = data["ordering"]
-        wells: List[List[Union[TipSpot, Well, Container]]] = (
+        wells: List[List[Union[TipSpot, Well, Trough]]] = (
             []
         )  # TODO: can we use TypeGuard?
 
@@ -89,11 +89,13 @@ def ot_definition_to_resource(
                     well.location = location + offset
                     wells[i].append(well)
                 elif display_category == "reservoir":
-                    container = Container(
+                    assert max_volume is not None
+                    container = Trough(
                         name=item,
                         size_x=well_size_x,
                         size_y=well_size_y,
                         size_z=well_size_z,
+                        max_volume=max_volume,
                     )
                     offset = Coordinate(-well_size_x / 2, -well_size_y / 2, 0)
                     container.location = location + offset
