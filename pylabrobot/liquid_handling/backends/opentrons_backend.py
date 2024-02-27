@@ -442,6 +442,10 @@ class OpentronsBackend(LiquidHandlerBackend):
     else:
       offset_x = offset_y = offset_z = 0
 
+    # Fix collisions after blowout?
+    ot_api.lh.move_to_well(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
+      offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
+
     ot_api.lh.aspirate(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
       volume=volume, flow_rate=flow_rate, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
 
@@ -495,12 +499,12 @@ class OpentronsBackend(LiquidHandlerBackend):
       offset_x = offset_y = offset_z = 0
 
 
-    ot_api.lh.dispense(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
-      volume=volume, flow_rate=flow_rate, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
-
-    if op.blow_out_air_volume != 0:
-      ot_api.lh.blowout(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
-        flow_rate=flow_rate, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
+    if op.blow_out_air_volume == 0:
+        ot_api.lh.dispense(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
+          volume=volume, flow_rate=flow_rate, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
+    else:
+        ot_api.lh.dispense(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
+          volume=volume, flow_rate=flow_rate, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z, push_out=15)
 
   async def home(self):
     """ Home the robot """
