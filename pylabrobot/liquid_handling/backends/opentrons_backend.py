@@ -474,11 +474,17 @@ class OpentronsBackend(LiquidHandlerBackend):
       "p20_multi_gen2": 7.6
     }[pipette_name]
 
-  async def dispense(self, ops: List[Dispense], use_channels: List[int]):
+  async def dispense(self, ops: List[Dispense], use_channels: List[int], push_outs: Optional[List[float]]=None):
     """ Dispense liquid from the specified resource using pip. """
+
+    if push_outs is None:
+        push_outs = [0.0] * len(ops)
+
     assert len(ops) == 1, "only one channel supported for now"
+    assert len(push_outs) == len(ops), "number of push_outs must match number of ops"
     assert use_channels == [0], "manual channel selection not supported on OT for now"
     op = ops[0]
+    push_out = push_outs[0]
     # this feels wrong, why should backends check?
     assert op.resource.parent is not None, "must not be a floating resource"
 
@@ -498,13 +504,8 @@ class OpentronsBackend(LiquidHandlerBackend):
     else:
       offset_x = offset_y = offset_z = 0
 
-
-    if op.blow_out_air_volume == 0:
-        ot_api.lh.dispense(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
-          volume=volume, flow_rate=flow_rate, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
-    else:
-        ot_api.lh.dispense(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
-          volume=volume, flow_rate=flow_rate, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z, push_out=15)
+    ot_api.lh.dispense(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
+      volume=volume, flow_rate=flow_rate, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z, push_out=push_out)
 
   async def home(self):
     """ Home the robot """

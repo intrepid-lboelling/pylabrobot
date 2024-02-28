@@ -879,8 +879,6 @@ class LiquidHandler(Machine):
           for liquid, volume in op.liquids:
             op.resource.tracker.add_liquid(liquid=liquid, volume=volume)
         op.tip.tracker.remove_liquid(op.volume)
-        if op.tip.tracker.get_used_volume() == 0:
-            op.blow_out_air_volume = 1.0
 
     extras = self._check_args(self.backend.dispense, backend_kwargs,
       default={"ops", "use_channels"})
