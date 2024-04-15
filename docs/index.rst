@@ -23,6 +23,13 @@ PyLabRobot provides a layer of general-purpose abstractions over robot functions
 
    installation.md
    contributing.md
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Contributing
+
+   new-machine-type.md
+   new-concrete-backend.md
    how-to-open-source.md
 
 
@@ -33,7 +40,6 @@ PyLabRobot provides a layer of general-purpose abstractions over robot functions
    basic
    using-the-visualizer
    using-trackers
-   custom-resources
    writing-robot-agnostic-methods
 
 
@@ -41,6 +47,8 @@ PyLabRobot provides a layer of general-purpose abstractions over robot functions
    :maxdepth: 1
    :caption: Resources
 
+   resources/introduction
+   resources/custom-resources
    resources/hamilton_parse
 
 
@@ -70,6 +78,13 @@ PyLabRobot provides a layer of general-purpose abstractions over robot functions
    :caption: Temperature controlling
 
    temperature
+
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Heater shakers
+
+   heating-shaking
 
 
 .. toctree::

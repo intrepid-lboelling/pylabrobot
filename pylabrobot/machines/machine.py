@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from abc import ABC, ABCMeta, abstractmethod
-import functools
-from typing import Callable, Optional
+from abc import ABCMeta, abstractmethod
+from typing import Optional, Callable
 
+from pylabrobot.machines.backends import MachineBackend
 from pylabrobot.resources import Resource
+
+import functools
 
 
 def need_setup_finished(func: Callable):
@@ -23,21 +25,8 @@ def need_setup_finished(func: Callable):
     return await func(self, *args, **kwargs)
   return wrapper
 
-
-class MachineBackend(ABC):
-  """ Abstract class for machine backends. """
-
-  @abstractmethod
-  async def setup(self):
-    pass
-
-  @abstractmethod
-  async def stop(self):
-    pass
-
-
 class Machine(Resource, metaclass=ABCMeta):
-  """ Abstract class for machine frontends. All `Machine`s are `Resource`s. """
+  """ Abstract class for machine frontends. All Machines are Resources. """
 
   @abstractmethod
   def __init__(

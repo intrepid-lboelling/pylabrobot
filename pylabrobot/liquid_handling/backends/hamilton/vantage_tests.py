@@ -292,6 +292,12 @@ class TestVantageLiquidHandlerCommands(unittest.IsolatedAsyncioTestCase):
       "de0010&mv00000&mc00&mp000&ms0010&wt00&gi000&gj0gk0zu0000&dj00zr00000&mh0000&po0050&la0&",
       DISPENSE_FORMAT)
 
+  async def test_zero_volume_liquid_handling(self):
+     # just test that this does not throw an error
+    await self.lh.pick_up_tips(self.tip_rack["A1"]) # pick up tips first
+    await self.lh.aspirate(self.plate["A1"], vols=0)
+    await self.lh.dispense(self.plate["A2"], vols=0)
+
   async def test_tip_pickup96(self):
     await self.lh.pick_up_tips96(self.tip_rack)
     self._assert_command_sent_once(
@@ -307,7 +313,7 @@ class TestVantageLiquidHandlerCommands(unittest.IsolatedAsyncioTestCase):
 
   async def test_aspirate96(self):
     await self.lh.pick_up_tips96(self.tip_rack)
-    await self.lh.aspirate_plate(self.plate, volume=100, jet=True, blow_out=True)
+    await self.lh.aspirate96(self.plate, volume=100, jet=True, blow_out=True)
     self._assert_command_sent_once(
       "A1HMDAid0236at0xp05680yp1460th2450te2450lp2001zl1871zx1871ip000fp000av010720as2500ta050"
       "ba004000oa00000lm0ll4de0020wt10mv00000mc00mp000ms2500zu0000zr00000mh000gj0gk0gi000"
@@ -320,8 +326,8 @@ class TestVantageLiquidHandlerCommands(unittest.IsolatedAsyncioTestCase):
 
   async def test_dispense96(self):
     await self.lh.pick_up_tips96(self.tip_rack)
-    await self.lh.aspirate_plate(self.plate, volume=100, jet=True, blow_out=True)
-    await self.lh.dispense_plate(self.plate, volume=100, jet=True, blow_out=True)
+    await self.lh.aspirate96(self.plate, volume=100, jet=True, blow_out=True)
+    await self.lh.dispense96(self.plate, volume=100, jet=True, blow_out=True)
     self._assert_command_sent_once(
       "A1HMDDid0238dm1xp05680yp1460th2450te2450lp2001zl1971zx1871ip000fp029dv010720ds4000ta050"
       "ba004000lm0ll4de0010wt00mv00000mc00mp000ms0010ss2500rv000zu0000dj00zr00000mh000gj0gk0gi000"
@@ -331,6 +337,12 @@ class TestVantageLiquidHandlerCommands(unittest.IsolatedAsyncioTestCase):
         "ll": "int", "de": "int", "wt": "int", "mv": "int", "mc": "int", "mp": "int", "ms": "int",
         "ss": "int", "rv": "int", "zu": "int", "zr": "int", "dj": "int", "mh": "int", "gj": "int",
         "gk": "int", "gi": "int", "cw": "hex", "po": "int"})
+
+  async def test_zero_volume_liquid_handling96(self):
+    # just test that this does not throw an error
+    await self.lh.pick_up_tips96(self.tip_rack)
+    await self.lh.aspirate96(self.plate, volume=0)
+    await self.lh.dispense96(self.plate, volume=0)
 
   async def test_move_plate(self):
     await self.lh.move_plate(self.plate, self.plt_car[1], pickup_distance_from_top=5.2)

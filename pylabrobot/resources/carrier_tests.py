@@ -6,6 +6,7 @@ import unittest
 from .carrier import Carrier, TipCarrier, create_homogeneous_carrier_sites
 from .coordinate import Coordinate
 from .deck import Deck
+from .errors import ResourceNotFoundError
 from .resource import Resource
 from .tip_rack import TipRack
 
@@ -74,9 +75,9 @@ class CarrierTests(unittest.TestCase):
     deck.assign_child_resource(carrier, location=Coordinate.zero())
 
     self.assertIsNone(plate.parent)
-    with self.assertRaises(ValueError):
+    with self.assertRaises(ResourceNotFoundError):
       carrier.get_resource("plate")
-    with self.assertRaises(ValueError):
+    with self.assertRaises(ResourceNotFoundError):
       deck.get_resource("plate")
 
   def test_assign_index_error(self):
@@ -168,7 +169,6 @@ class CarrierTests(unittest.TestCase):
       "parent_name": None,
       "children": [
         {
-          "spot": 0,
           "name": "carrier-tip_car-spot-0",
           "type": "CarrierSite",
           "size_x": 10,
@@ -186,7 +186,6 @@ class CarrierTests(unittest.TestCase):
           "model": None
         },
         {
-          "spot": 1,
           "name": "carrier-tip_car-spot-1",
           "type": "CarrierSite",
           "size_x": 10,
@@ -204,7 +203,6 @@ class CarrierTests(unittest.TestCase):
           "model": None
         },
         {
-          "spot": 2,
           "name": "carrier-tip_car-spot-2",
           "type": "CarrierSite",
           "size_x": 10,
@@ -222,7 +220,6 @@ class CarrierTests(unittest.TestCase):
           "model": None
         },
         {
-          "spot": 3,
           "name": "carrier-tip_car-spot-3",
           "type": "CarrierSite",
           "size_x": 10,
@@ -240,7 +237,6 @@ class CarrierTests(unittest.TestCase):
           "model": None
         },
         {
-          "spot": 4,
           "name": "carrier-tip_car-spot-4",
           "type": "CarrierSite",
           "size_x": 10,
