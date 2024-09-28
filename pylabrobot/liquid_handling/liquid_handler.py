@@ -1573,6 +1573,19 @@ class LiquidHandler(Machine):
 
     return result
 
+
+
+  async def move_labware_flex(
+      self,
+      resource: Plate,
+      to: str, # deck slot string
+  ):
+      """ Move a labware to a new location. """
+      result = await self.backend.move_labware(resource=resource, to=to)
+      return result
+
+
+
   async def move_lid(
     self,
     lid: Lid,
@@ -1647,6 +1660,9 @@ class LiquidHandler(Machine):
       to.assign_child_resource(resource=lid)
     else:
       raise ValueError("'to' must be either a Coordinate, ResourceStack or Plate")
+
+
+
 
   async def move_plate(
     self,

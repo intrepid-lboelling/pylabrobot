@@ -550,6 +550,19 @@ class OpentronsBackend(LiquidHandlerBackend):
     """ Move the specified lid within the robot. """
     raise NotImplementedError("Moving resources in Opentrons is not implemented yet.")
 
+
+  async def move_labware(
+      self,
+      resource: Plate,
+      to: str,
+    ):
+    """ Move a labware to a specified location. """
+    ot_api.lh.move_labware(
+      labware_id=self.defined_labware[resource.name],
+      new_location=to,
+    )
+
+
   async def list_connected_modules(self) -> List[dict]:
     """ List all connected temperature modules. """
     return cast(List[dict], ot_api.modules.list_connected_modules())
