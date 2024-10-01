@@ -107,4 +107,9 @@ def geb_96_tiprack_1000ul(name: str) -> TipRack:
     version=1
   ))
 
-
+def opentrons_flex_96_tiprack_200ul(name:str) -> TipRack:
+  return cast(TipRack, load_shared_opentrons_resource(
+    definition='opentrons_flex_96_tiprack_200ul',
+    name=name,
+    version=1,
+))
