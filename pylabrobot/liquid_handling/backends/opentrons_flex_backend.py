@@ -42,15 +42,16 @@ else:
 _OT_DECK_IS_ADDRESSABLE_AREA_VERSION = "7.1.0"
 
 
-class OpentronsBackend(LiquidHandlerBackend):
-  """ Backends for the Opentrons liquid handling robots. Only supported on Python 3.10.
+class OpentronsFlexBackend(LiquidHandlerBackend):
+  """ Backend for the Opentrons Flex.
   """
 
   fixed_trash_coords = {
-    'x': 350.,
-    'y': 335.,
+    'x': 435.,
+    'y': 390.,
     'z': 100.,
   }
+
 
   pipette_name2volume = {
     "p10_single": 10,
@@ -301,12 +302,12 @@ class OpentronsBackend(LiquidHandlerBackend):
     """
 
     if self.left_pipette is not None:
-      left_volume = OpentronsBackend.pipette_name2volume[self.left_pipette["name"]]
+      left_volume = OpentronsFlexBackend.pipette_name2volume[self.left_pipette["name"]]
       if left_volume == tip_max_volume and with_tip == self.left_pipette_has_tip:
         return cast(str, self.left_pipette["pipetteId"])
 
     if self.right_pipette is not None:
-      right_volume = OpentronsBackend.pipette_name2volume[self.right_pipette["name"]]
+      right_volume = OpentronsFlexBackend.pipette_name2volume[self.right_pipette["name"]]
       if right_volume == tip_max_volume and with_tip == self.right_pipette_has_tip:
         return cast(str, self.right_pipette["pipetteId"])
 
@@ -343,8 +344,8 @@ class OpentronsBackend(LiquidHandlerBackend):
       offset_x = offset_y = offset_z = 0
 
     # ad-hoc offset adjustment that makes it smoother.
-    print("using ot2 z offset")
-    offset_z += 50
+    print('using a flex z offset')
+    offset_z+= 90
 
     ot_api.lh.pick_up_tip(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
       offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
