@@ -49,7 +49,7 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
   fixed_trash_coords = {
     'x': 435.,
     'y': 390.,
-    'z': 100.,
+    'z': 130.,
   }
 
 

@@ -49,7 +49,7 @@ class OpentronsBackend(LiquidHandlerBackend):
   fixed_trash_coords = {
     'x': 350.,
     'y': 335.,
-    'z': 100.,
+    'z': 130.,
   }
 
   pipette_name2volume = {
