@@ -60,7 +60,9 @@ class OpentronsBackend(LiquidHandlerBackend):
     "p1000_single": 1000,
     "p1000_single_gen2": 1000,
     "p300_single_gen3": 300,
-    "p1000_single_gen3": 1000
+    "p1000_single_gen3": 1000,
+    "p1000_single_flex": 200,
+    "p1000_multi_flex": 200
   }
 
   def __init__(self, host: str, port: int = 31950):
@@ -304,7 +306,38 @@ class OpentronsBackend(LiquidHandlerBackend):
 
     return None
 
-  async def pick_up_tips(self, ops: List[Pickup], use_channels: List[int]):
+  # async def pick_up_tips(self, ops: List[Pickup], use_channels: List[int]):
+  #   """ Pick up tips from the specified resource. """
+
+  #   assert len(ops) == 1, "only one channel supported for now"
+  #   assert use_channels == [0], "manual channel selection not supported on OT for now"
+  #   op = ops[0] # for channel in channels
+  #   # this feels wrong, why should backends check?
+  #   assert op.resource.parent is not None, "must not be a floating resource"
+
+  #   labware_id = self.defined_labware[op.resource.parent.name] # get name of tip rack
+  #   tip_max_volume = op.tip.maximal_volume
+  #   pipette_id = self.select_tip_pipette(tip_max_volume, with_tip=False)
+  #   if not pipette_id:
+  #     raise NoChannelError("No pipette channel of right type with no tip available.")
+
+  #   if op.offset is not None:
+  #     offset_x, offset_y, offset_z = op.offset.x, op.offset.y, op.offset.z
+  #   else:
+  #     offset_x = offset_y = offset_z = 0
+
+  #   # ad-hoc offset adjustment that makes it smoother.
+  #   offset_z += 50
+
+  #   ot_api.lh.pick_up_tip(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
+  #     offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
+
+  #   if self.left_pipette is not None and pipette_id == self.left_pipette["pipetteId"]:
+  #     self.left_pipette_has_tip = True
+  #   else:
+  #     self.right_pipette_has_tip = True
+
+  async def pick_up_tips(self, ops: List[Pickup], use_channels: List[int], pipette=None, flex=False):
     """ Pick up tips from the specified resource. """
 
     assert len(ops) == 1, "only one channel supported for now"
@@ -316,6 +349,15 @@ class OpentronsBackend(LiquidHandlerBackend):
     labware_id = self.defined_labware[op.resource.parent.name] # get name of tip rack
     tip_max_volume = op.tip.maximal_volume
     pipette_id = self.select_tip_pipette(tip_max_volume, with_tip=False)
+
+    if pipette is not None:
+      if pipette == "left":
+        pipette_id= cast(str, self.left_pipette["pipetteId"])
+      elif  pipette == "right":
+        pipette_id = cast(str, self.right_pipette["pipetteId"])
+      else:
+        raise ValueError("pipette argument must be right or left")
+
     if not pipette_id:
       raise NoChannelError("No pipette channel of right type with no tip available.")
 
@@ -325,17 +367,24 @@ class OpentronsBackend(LiquidHandlerBackend):
       offset_x = offset_y = offset_z = 0
 
     # ad-hoc offset adjustment that makes it smoother.
-    offset_z += 50
+    if flex==True:
+      print("using flex z offset")
+      offset_z+= 90
+    else:
+      offset_z += 50
 
     ot_api.lh.pick_up_tip(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
       offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
 
-    if self.left_pipette is not None and pipette_id == self.left_pipette["pipetteId"]:
+    if pipette_id == self.left_pipette["pipetteId"]:
       self.left_pipette_has_tip = True
     else:
       self.right_pipette_has_tip = True
 
-  async def drop_tips(self, ops: List[Drop], use_channels: List[int]):
+
+
+
+  async def drop_tips(self, ops: List[Drop], use_channels: List[int], pipette=None):
     """ Drop tips from the specified resource. """
 
     # right now we get the tip rack, and then identifier within that tip rack?
@@ -347,12 +396,27 @@ class OpentronsBackend(LiquidHandlerBackend):
     # this feels wrong, why should backends check?
     assert op.resource.parent is not None, "must not be a floating resource"
 
-    use_fixed_trash = cast(str, self.ot_api_version) >= _OT_DECK_IS_ADDRESSABLE_AREA_VERSION and \
-                        op.resource.name == "trash"
+    use_fixed_trash = op.resource.name == 'trash'
     if use_fixed_trash:
-      labware_id = "fixedTrash"
+      labware_id = 'fixedTrash'
     else:
       labware_id = self.defined_labware[op.resource.parent.name] # get name of tip rack
+
+    if pipette is not None:
+      if pipette == "left":
+        pipette_id= cast(str, self.left_pipette["pipetteId"])
+      elif  pipette == "right":
+        pipette_id = cast(str, self.right_pipette["pipetteId"])
+      else:
+        raise ValueError("pipette argument must be right or left")
+
+    # use_fixed_trash = cast(str, self.ot_api_version) >= _OT_DECK_IS_ADDRESSABLE_AREA_VERSION and \
+    #                     op.resource.name == "trash"
+    # if use_fixed_trash:
+    #   labware_id = "fixedTrash"
+    # else:
+    #   labware_id = self.defined_labware[op.resource.parent.name] # get name of tip rack
+
     tip_max_volume = op.tip.maximal_volume
     pipette_id = self.select_tip_pipette(tip_max_volume, with_tip=True)
     if not pipette_id:
@@ -367,8 +431,20 @@ class OpentronsBackend(LiquidHandlerBackend):
     offset_z += 10
 
     if use_fixed_trash:
-      ot_api.lh.move_to_addressable_area_for_drop_tip(pipette_id=pipette_id,
-        offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
+
+      ot_api.lh.retract_pipette_z_axis(pipette_mount=pipette)
+      ot_api.lh.move_to_coords(
+        x=435.,
+        y=390.,
+        z=100.,
+        pipette_id=pipette_id,
+      )
+      ot_api.lh.move_to_coords(
+        x=435.,
+        y=390.,
+        z=60.,
+        pipette_id=pipette_id,
+      )
       ot_api.lh.drop_tip_in_place(pipette_id=pipette_id)
     else:
       ot_api.lh.drop_tip(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
@@ -378,6 +454,49 @@ class OpentronsBackend(LiquidHandlerBackend):
       self.left_pipette_has_tip = False
     else:
       self.right_pipette_has_tip = False
+
+  # async def drop_tips(self, ops: List[Drop], use_channels: List[int], pipette=None):
+  #   """ Drop tips from the specified resource. """
+
+  #   # right now we get the tip rack, and then identifier within that tip rack?
+  #   # how do we do that with trash, assuming we don't want to have a child for the trash?
+
+  #   assert len(ops) == 1 # only one channel supported for now
+  #   # assert use_channels == [0], "manual channel selection not supported on OT for now"
+  #   op = ops[0] # for channel in channels
+  #   # this feels wrong, why should backends check?
+  #   assert op.resource.parent is not None, "must not be a floating resource"
+
+  #   labware_id = self.defined_labware[op.resource.parent.name] # get name of tip rack
+  #   tip_max_volume = op.tip.maximal_volume
+  #   pipette_id = self.select_tip_pipette(tip_max_volume, with_tip=True)
+  #   if not pipette_id:
+  #     raise NoChannelError("No pipette channel of right type with tip available.")
+
+
+  #   if pipette is not None:
+  #     if pipette == "left":
+  #       pipette_id= cast(str, self.left_pipette["pipetteId"])
+  #     elif  pipette == "right":
+  #       pipette_id = cast(str, self.right_pipette["pipetteId"])
+  #     else:
+  #       raise ValueError("pipette argument must be right or left")
+
+  #   if op.offset is not None:
+  #     offset_x, offset_y, offset_z = op.offset.x, op.offset.y, op.offset.z
+  #   else:
+  #     offset_x = offset_y = offset_z = 0
+
+  #   # ad-hoc offset adjustment that makes it smoother.
+  #   offset_z += 10
+
+  #   ot_api.lh.drop_tip(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
+  #     offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
+
+  #   if pipette_id == self.left_pipette["pipetteId"]:
+  #     self.left_pipette_has_tip = False
+  #   else:
+  #     self.right_pipette_has_tip = False
 
   def select_liquid_pipette(self, volume: float) -> Optional[str]:
     """ Select a pipette based on volume for an aspiration or dispense.
