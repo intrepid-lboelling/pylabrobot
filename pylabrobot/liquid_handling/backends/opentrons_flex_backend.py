@@ -52,6 +52,8 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     'z': 130.,
   }
 
+  asp_disp_z_offset = 37.0 # mm
+
 
   pipette_name2volume = {
     "p10_single": 10,
@@ -440,12 +442,12 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     """
 
     if self.left_pipette is not None:
-      left_volume = OpentronsBackend.pipette_name2volume[self.left_pipette["name"]]
+      left_volume = OpentronsFlexBackend.pipette_name2volume[self.left_pipette["name"]]
       if left_volume >= volume and self.left_pipette_has_tip:
         return cast(str, self.left_pipette["pipetteId"])
 
     if self.right_pipette is not None:
-      right_volume = OpentronsBackend.pipette_name2volume[self.right_pipette["name"]]
+      right_volume = OpentronsFlexBackend.pipette_name2volume[self.right_pipette["name"]]
       if right_volume >= volume and self.right_pipette_has_tip:
         return cast(str, self.right_pipette["pipetteId"])
 
@@ -510,6 +512,9 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     else:
       offset_x = offset_y = offset_z = 0
 
+    # fixed z offset for aspirate and dispense commands with flex
+    offset_z -= self.asp_disp_z_offset
+
     # Fix collisions after blowout?
     ot_api.lh.move_to_well(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
       offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
@@ -571,6 +576,9 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       offset_x, offset_y, offset_z = op.offset.x, op.offset.y, op.offset.z
     else:
       offset_x = offset_y = offset_z = 0
+
+    # fixed z dimension offsert for aspirate and dispense ops
+    offset_z -= self.asp_disp_z_offset
 
     ot_api.lh.dispense(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
       volume=volume, flow_rate=flow_rate, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z, push_out=push_out)
