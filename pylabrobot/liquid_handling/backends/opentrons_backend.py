@@ -399,18 +399,8 @@ class OpentronsBackend(LiquidHandlerBackend):
     offset_z += 10
 
     if use_fixed_trash:
-      ot_api.lh.retract_pipette_z_axis(pipette_mount=pipette)
-      ot_api.lh.move_to_coords(
-        x=self.fixed_trash_coords['x'],
-        y=self.fixed_trash_coords['y'],
-        z=self.fixed_trash_coords['z'],
-        pipette_id=pipette_id,
-      )
-      ot_api.lh.move_to_coords(
-        x=self.fixed_trash_coords['x'],
-        y=self.fixed_trash_coords['y'],
-        z=self.fixed_trash_coords['z'] - 40.,
-        pipette_id=pipette_id,
+      ot_api.lh.move_to_addressable_area_for_drop_tip(
+        pipette_id=pipette_id, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z,
       )
       ot_api.lh.drop_tip_in_place(pipette_id=pipette_id)
     else:
