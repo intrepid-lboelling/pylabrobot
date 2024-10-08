@@ -46,10 +46,11 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
   """ Backend for the Opentrons Flex.
   """
 
+  # trash container is fixed in deck slot 10
   fixed_trash_coords = {
-    'x': 435.,
+    'x': 75.,
     'y': 390.,
-    'z': 130.,
+    'z': 175.,
   }
 
   asp_disp_z_offset = 37.0 # mm
