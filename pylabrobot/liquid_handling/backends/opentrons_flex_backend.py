@@ -611,6 +611,9 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       to: str,
     ):
     """ Move a labware to a specified location. """
+    # extend gripper jaw to home position
+    ot_api.lh.home_gripper()
+    # move the labware with the gripper (locked on "usingGripper" strategy)
     ot_api.lh.move_labware(
       labware_id=self.defined_labware[resource.name],
       new_location=to,
