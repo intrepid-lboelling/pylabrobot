@@ -22,7 +22,7 @@ from pylabrobot.resources import (
   TipRack,
   TipSpot
 )
-from pylabrobot.resources.opentrons import OTDeck
+from pylabrobot.resources.opentrons_flex import OTDeck
 from pylabrobot.temperature_controlling import OpentronsTemperatureModuleV2
 from pylabrobot import utils
 

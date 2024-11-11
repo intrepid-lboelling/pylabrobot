@@ -70,6 +70,14 @@ class OTDeck(Deck):
     trash_container.assign_child_resource(actual_trash, location=Coordinate.zero())
     self.assign_child_at_slot(trash_container, 10)
 
+
+  def slot_to_index(self, slot: str):
+    if slot.startswith("A"):
+      return 0 + int(slot[1])
+    if slot.startswith("B"):
+      return 1 + int(slot[1])
+
+
   def assign_child_resource(
     self,
     resource: Resource,
@@ -171,5 +179,28 @@ class OTDeck(Deck):
       |                 |                 |                 |                 |
       +-----------------+-----------------+-----------------+-----------------+
     """
+
+    summary_ = f"""
+      Deck: {self.get_size_x()}mm x {self.get_size_y()}mm
+
+      +-----------------+-----------------+-----------------+-----------------+
+      |                 |                 |                 |                 |
+      |  D1: {_get_slot_name(9)} | D2: {_get_slot_name(10)} | D3: {_get_slot_name(11)} | D4: {_get_slot_name(12)} |
+      |                 |                 |                 |                 |
+      +-----------------+-----------------+-----------------+-----------------+
+      |                 |                 |                 |                 |
+      |  C1: {_get_slot_name(6)} |  C2: {_get_slot_name(7)} |  C3: {_get_slot_name(8)} | C4: {_get_slot_name(13)} |
+      |                 |                 |                 |                 |
+      +-----------------+-----------------+-----------------+-----------------+
+      |                 |                 |                 |                 |
+      |  B1: {_get_slot_name(3)} |  B2: {_get_slot_name(4)} |  B3: {_get_slot_name(5)} | B4: {_get_slot_name(14)} |
+      |                 |                 |                 |                 |
+      +-----------------+-----------------+-----------------+-----------------+
+      |                 |                 |                 |                 |
+      |  A1: {_get_slot_name(0)} |  A2: {_get_slot_name(1)} |  A3: {_get_slot_name(2)} | A4: {_get_slot_name(15)} |
+      |                 |                 |                 |                 |
+      +-----------------+-----------------+-----------------+-----------------+
+    """
+
 
     return textwrap.dedent(summary_)
