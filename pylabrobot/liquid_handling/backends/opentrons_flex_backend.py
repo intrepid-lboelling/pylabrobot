@@ -124,7 +124,7 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     self.defined_labware = {}
     await super().stop()
 
-  def _get_resource_slot(self, resource: Resource) -> int:
+  def _get_resource_slot(self, resource: Resource) -> str:
     """ Get the ultimate slot of a given resource. Some resources are assigned to another resource,
     such as a temperature controller, and we need to find the slot of the parent resource. Nesting
     may be deeper than one level, so we need to traverse the tree from the bottom up. """
