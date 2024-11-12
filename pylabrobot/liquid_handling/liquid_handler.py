@@ -70,9 +70,10 @@ def convert_move_to_types(
     elif 13 <= int_to <= 16:
       return StagingSlotMoveTo(loc=int_to)
   except ValueError:
-    if isinstance(to, str) and to.isalnum() and len(to) > 12:
+    if isinstance(to, str) and len(to) > 12:
       # assuming this is a module id
-      return ModuleMoveTo(module_id=to)
+      #return ModuleMoveTo(module_id=to, module_gripper=1)
+      return AdapterMoveTo(labware_id=to)
 
   raise ValueError(f"Invalid move 'to' type requested: {to}")
 
@@ -84,20 +85,24 @@ class DeckSlotMoveTo:
 class StagingSlotMoveTo:
   loc: int
 
-  map_: dict[int,str] = {13: 'A4', 14: 'B4', 15: 'C4', 16: 'D4'}
+
 
   def __post__init__(self):
 
-    self.matrix_loc = self.map_[self.value]
+    map_: dict[int,str] = {13: 'A4', 14: 'B4', 15: 'C4', 16: 'D4'}
+
+    self.matrix_loc = map_[self.value]
 
 
 @dataclass
 class ModuleMoveTo:
   module_id: str
+  module_gripper: int
   module_loc: int = 7
 
-
-
+@dataclass
+class AdapterMoveTo:
+  labware_id: str
 
 
 class LiquidHandler(Machine):
@@ -1636,7 +1641,9 @@ class LiquidHandler(Machine):
       if isinstance(to_obj, (DeckSlotMoveTo, StagingSlotMoveTo)):
         self.deck.assign_child_at_slot(resource, to_obj.loc) # pylabrobot tracks the integer slots only
       elif isinstance(to_obj, ModuleMoveTo):
-        self.deck.assign_child_resource(resource, to_obj.module_loc)
+        self.deck.assign_child_at_slot(resource, to_obj.module_loc)
+      elif isinstance(to_obj, AdapterMoveTo):
+        self.deck.assign_child_at_slot(resource, 7)
       else:
         raise NotImplementedError
 

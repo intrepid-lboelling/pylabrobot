@@ -1,5 +1,5 @@
 import sys
-from typing import Dict, Optional, List, cast
+from typing import Dict, Optional, List, cast, Union
 
 from pylabrobot.liquid_handling.backends.backend import LiquidHandlerBackend
 from pylabrobot.liquid_handling.errors import NoChannelError
@@ -30,6 +30,7 @@ from pylabrobot.liquid_handling.liquid_handler import (
   DeckSlotMoveTo,
   StagingSlotMoveTo,
   ModuleMoveTo,
+  AdapterMoveTo,
   convert_move_to_types
 )
 
@@ -626,7 +627,7 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
   async def move_labware(
       self,
       resource: Plate,
-      to: Union[StagingSlotMoveTo, DeckSlotMoveTo, ModuleMoveTo],
+      to: Union[StagingSlotMoveTo, DeckSlotMoveTo, ModuleMoveTo, AdapterMoveTo],
     ) -> None:
     """ Move a labware to a specified location. """
     if isinstance(to, DeckSlotMoveTo):
@@ -634,9 +635,13 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     elif isinstance(to, StagingSlotMoveTo):
       new_location = {'addressableAreaName': to.matrix_loc}
     elif isinstance(to, ModuleMoveTo):
-      raise NotImplementedError
+      new_location = {'moduleId': to.module_id}
+    elif isinstance(to, AdapterMoveTo):
+      new_location = {'labwareId': to.labware_id}
     else:
       raise ValueError
+
+    ot_api.lh.home_gripper()
 
     # call to opentrons api to make the move
     ot_api.lh.move_labware(
