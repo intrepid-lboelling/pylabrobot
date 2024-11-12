@@ -1,5 +1,5 @@
 import sys
-from typing import Dict, Optional, List, cast
+from typing import Dict, Optional, List, cast, Union
 
 from pylabrobot.liquid_handling.backends.backend import LiquidHandlerBackend
 from pylabrobot.liquid_handling.errors import NoChannelError
@@ -25,6 +25,14 @@ from pylabrobot.resources import (
 from pylabrobot.resources.opentrons import OTDeck
 from pylabrobot.temperature_controlling import OpentronsTemperatureModuleV2
 from pylabrobot import utils
+
+from pylabrobot.liquid_handling.liquid_handler import (
+  StagingSlotMoveTo,
+  DeckSlotMoveTo,
+  ModuleMoveTo,
+  convert_move_to_types,
+)
+
 
 PYTHON_VERSION = sys.version_info[:2]
 
@@ -266,10 +274,21 @@ class OpentronsBackend(LiquidHandlerBackend):
     # assign labware to robot
     labware_uuid = resource.name
 
+    # handle the slot name for the opentrons api backend
+    slot_obj = convert_move_to_types(slot)
+    if isinstance(slot_obj, DeckSlotMoveTo):
+      location = {'slotName': str(slot_obj.loc)}
+    elif isinstance(slot_obj, StagingSlotMoveTo):
+      location = {'addressableAreaName': slot_obj.matrix_loc}
+      slot = slot_obj.matrix_loc
+    else:
+      raise ValueError(f"Unknown slot type: {slot}")
+
     ot_api.labware.add(
       load_name=definition,
       namespace=namespace,
-      slot=slot,
+      #slot=slot,
+      location=location,
       version=version,
       labware_id=labware_uuid,
       display_name=resource.name)
@@ -588,12 +607,22 @@ class OpentronsBackend(LiquidHandlerBackend):
   async def move_labware(
       self,
       resource: Plate,
-      to: str,
-    ):
+      to: Union[StagingSlotMoveTo, DeckSlotMoveTo, ModuleMoveTo],
+    ) -> None:
     """ Move a labware to a specified location. """
+    if isinstance(to, DeckSlotMoveTo):
+      new_location = {'slotName': str(to.loc)}
+    elif isinstance(to, StagingSlotMoveTo):
+      new_location = {'addressableAreaName': to.matrix_loc}
+    elif isinstance(to, ModuleMoveTo):
+      raise NotImplementedError
+    else:
+      raise ValueError
+
+    # call to opentrons api to make the move
     ot_api.lh.move_labware(
       labware_id=self.defined_labware[resource.name],
-      new_location=to,
+      new_location=new_location,
     )
 
 
