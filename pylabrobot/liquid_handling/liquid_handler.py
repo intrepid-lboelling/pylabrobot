@@ -1581,8 +1581,11 @@ class LiquidHandler(Machine):
       to: str, # deck slot string
   ):
       """ Move a labware to a new location. """
-      print(self.deck.summary())
+      
       result = await self.backend.move_labware(resource=resource, to=to)
+      self.deck.unassign_child_resource(resource)
+      self.deck.assign_child_at_slot(resource, int(to))
+
       return result
 
 

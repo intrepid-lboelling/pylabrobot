@@ -17,44 +17,26 @@ class OTDeck(Deck):
 
     super().__init__(size_x=size_x, size_y=size_y, size_z=size_z, origin=origin)
 
-    self.slots = {
-      "A1": None,
-      "A2": None,
-      "A3": None,
-      "B1": None,
-      "B2": None,
-      "B3": None,
-      "C1": None,
-      "C2": None,
-      "C3": None,
-      "D1": None,
-      "D2": None,
-      "D3": None,
-      "D4": None, # staging slot 13
-      "C4": None, # staging slot 14
-      "B4": None, # staging slot 15
-      "A4": None, # staging slot 16
-    }
+    self.slots: List[Optional[Resource]] = [None] * 16
 
-
-    self.slot_locations = {
-      "A1": Coordinate(x=0.0,   y=0.0,   z=0.0),
-      "A2": Coordinate(x=132.5, y=0.0,   z=0.0),
-      "A3": Coordinate(x=265.0, y=0.0,   z=0.0),
-      "B1": Coordinate(x=0.0,   y=90.5,  z=0.0),
-      "B2": Coordinate(x=132.5, y=90.5,  z=0.0),
-      "B3": Coordinate(x=265.0, y=90.5,  z=0.0),
-      "C1": Coordinate(x=0.0,   y=181.0, z=0.0),
-      "C2": Coordinate(x=132.5, y=181.0, z=0.0),
-      "C3": Coordinate(x=265.0, y=181.0, z=0.0),
-      "D1": Coordinate(x=0.0,   y=271.5, z=0.0),
-      "D2": Coordinate(x=132.5, y=271.5, z=0.0),
-      "D3": Coordinate(x=265.0, y=271.5, z=0.0),
-      "D4": Coordinate(x=397.5, y=271.5, z=14.51), # staging slot 13
-      "C4": Coordinate(x=397.5, y=181.0, z=14.51), # staging slot 14
-      "B4": Coordinate(x=397.5, y=90.5,  z=14.51), # staging slot 15
-      "A4": Coordinate(x=397.5, y=0.0,   z=14.51), # staging slot 16
-    }
+    self.slot_locations = [
+      Coordinate(x=0.0,   y=0.0,   z=0.0),
+      Coordinate(x=132.5, y=0.0,   z=0.0),
+      Coordinate(x=265.0, y=0.0,   z=0.0),
+      Coordinate(x=0.0,   y=90.5,  z=0.0),
+      Coordinate(x=132.5, y=90.5,  z=0.0),
+      Coordinate(x=265.0, y=90.5,  z=0.0),
+      Coordinate(x=0.0,   y=181.0, z=0.0),
+      Coordinate(x=132.5, y=181.0, z=0.0),
+      Coordinate(x=265.0, y=181.0, z=0.0),
+      Coordinate(x=0.0,   y=271.5, z=0.0),
+      Coordinate(x=132.5, y=271.5, z=0.0),
+      Coordinate(x=265.0, y=271.5, z=0.0),
+      Coordinate(x=397.5, y=271.5, z=14.51), # staging slot 13
+      Coordinate(x=397.5, y=181.0, z=14.51), # staging slot 14
+      Coordinate(x=397.5, y=90.5,  z=14.51), # staging slot 15
+      Coordinate(x=397.5, y=0.0,   z=14.51), # staging slot 16
+    ]
 
     if not no_trash:
       self._assign_trash()
@@ -86,8 +68,7 @@ class OTDeck(Deck):
     # so this location is no longer needed and we just use Coordinate.zero().
     # The actual location of the trash is determined by the slot number (10).
     trash_container.assign_child_resource(actual_trash, location=Coordinate.zero())
-    self.assign_child_at_slot(trash_container, "D1")
-
+    self.assign_child_at_slot(trash_container, 10)
 
   def assign_child_resource(
     self,
@@ -100,36 +81,37 @@ class OTDeck(Deck):
     ..warning:: This method exists only for deserialization. You should use
     :meth:`assign_child_at_slot` instead.
     """
-    if location in self.slot_locations.keys():
+
+    if location not in self.slot_locations:
       super().assign_child_resource(resource, location=location)
     else:
-      raise ValueError("invalid slot assignment")
+      slot = self.slot_locations.index(location) + 1
+      self.assign_child_at_slot(resource, slot)
 
-  def assign_child_at_slot(self, resource: Resource, slot: str):
+  def assign_child_at_slot(self, resource: Resource, slot: int):
     # pylint: disable=arguments-renamed
-    if slot in self.slot_locations.keys():
-      super().assign_child_resource(resource, location=self.slot_locations[slot])
-      self.slots[slot]= resource
-    else: raise ValueError("Invalid slot")
+    if slot not in range(1, 17):
+      raise ValueError("slot must be between 1 and 16")
 
+    if self.slots[slot-1] is not None:
+      raise ValueError(f"Spot {slot} is already occupied")
+
+    self.slots[slot-1] = resource
+    super().assign_child_resource(resource, location=self.slot_locations[slot-1])
 
   def unassign_child_resource(self, resource: Resource):
-    if resource not in self.slots.values():
+    if resource not in self.slots:
       raise ValueError(f"Resource {resource.name} is not assigned to this deck")
 
-    for key, value in self.slots.items():
-      if value.name == resource.name:
-          self.slots[key] = None
+    slot = self.slots.index(resource)
+    self.slots[slot] = None
     super().unassign_child_resource(resource)
 
-  def get_slot(self, resource: Resource) -> str:
+  def get_slot(self, resource: Resource) -> Optional[int]:
     """ Get the slot number of a resource. """
-
-    for key, value in self.slots.items():
-      if value is not None:
-        if value.name == resource.name:
-            return key
-
+    if resource not in self.slots:
+      return None
+    return self.slots.index(resource) + 1
 
   def summary(self) -> str:
     """ Get a summary of the deck.
@@ -157,7 +139,7 @@ class OTDeck(Deck):
     +-----------------+-----------------+-----------------+-----------------+
     """
 
-    def _get_slot_name(slot: str) -> str:
+    def _get_slot_name(slot: int) -> str:
       """ Get slot name, or 'Empty' if slot is empty. If the name is too long, truncate it. """
       length = 11
       resource = self.slots[slot]
@@ -173,22 +155,21 @@ class OTDeck(Deck):
 
       +-----------------+-----------------+-----------------+-----------------+
       |                 |                 |                 |                 |
-      |  D1: {_get_slot_name("D1")} | D2: {_get_slot_name("D2")} | D3: {_get_slot_name("D3")} | D4: {_get_slot_name("D4")} |
+      | 10: {_get_slot_name(9)} | 11: {_get_slot_name(10)} | 12: {_get_slot_name(11)} | 13: {_get_slot_name(12)} |
       |                 |                 |                 |                 |
       +-----------------+-----------------+-----------------+-----------------+
       |                 |                 |                 |                 |
-      |  C1: {_get_slot_name("C1")} |  C2: {_get_slot_name("C2")} |  C3: {_get_slot_name("C3")} | C4: {_get_slot_name("C4")} |
+      |  7: {_get_slot_name(6)} |  8: {_get_slot_name(7)} |  9: {_get_slot_name(8)} | 14: {_get_slot_name(13)} |
       |                 |                 |                 |                 |
       +-----------------+-----------------+-----------------+-----------------+
       |                 |                 |                 |                 |
-      |  B1: {_get_slot_name("B1")} |  B2: {_get_slot_name("B2")} |  B3: {_get_slot_name("B3")} | B4: {_get_slot_name("B4")} |
+      |  4: {_get_slot_name(3)} |  5: {_get_slot_name(4)} |  6: {_get_slot_name(5)} | 15: {_get_slot_name(14)} |
       |                 |                 |                 |                 |
       +-----------------+-----------------+-----------------+-----------------+
       |                 |                 |                 |                 |
-      |  A1: {_get_slot_name("A1")} |  A2: {_get_slot_name("A2")} |  A3: {_get_slot_name("A3")} | A4: {_get_slot_name("A4")} |
+      |  1: {_get_slot_name(0)} |  2: {_get_slot_name(1)} |  3: {_get_slot_name(2)} | 16: {_get_slot_name(15)} |
       |                 |                 |                 |                 |
       +-----------------+-----------------+-----------------+-----------------+
     """
-
 
     return textwrap.dedent(summary_)
