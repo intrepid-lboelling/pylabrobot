@@ -94,6 +94,7 @@ class StagingSlotMoveTo:
 @dataclass
 class ModuleMoveTo:
   module_id: str
+  module_loc: int = 7
 
 
 
@@ -1634,6 +1635,8 @@ class LiquidHandler(Machine):
       self.deck.unassign_child_resource(resource)
       if isinstance(to_obj, (DeckSlotMoveTo, StagingSlotMoveTo)):
         self.deck.assign_child_at_slot(resource, to_obj.loc) # pylabrobot tracks the integer slots only
+      elif isinstance(to_obj, ModuleMoveTo):
+        self.deck.assign_child_resource(resource, to_obj.module_loc)
       else:
         raise NotImplementedError
 
