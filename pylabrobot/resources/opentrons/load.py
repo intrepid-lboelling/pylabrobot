@@ -238,4 +238,5 @@ def load_shared_opentrons_resource(
     """
 
     data = opentrons_shared_data.labware.load_definition(definition, version)
+
     return ot_definition_to_resource(data, name)
