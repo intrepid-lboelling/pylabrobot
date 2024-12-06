@@ -49,7 +49,8 @@ class Plate(ItemizedResource[Well]):
     category: str = "plate",
     lid_height: float = 0,
     with_lid: bool = False,
-    model: Optional[str] = None
+    model: Optional[str] = None,
+    stacking_labware_with_offset: Optional[dict[dict[str,float]]] = None
   ):
     """ Initialize a Plate resource.
 
@@ -70,12 +71,17 @@ class Plate(ItemizedResource[Well]):
       well_size_y: Size of the wells in the y direction.
       lid_height: Height of the lid in mm, only used if `with_lid` is True.
       with_lid: Whether the plate has a lid.
+      stacking_labware_with_offset: A dictionary of dictionaries containing the offset of the
+        labware when stacked.
     """
 
     super().__init__(name, size_x, size_y, size_z, items=items, num_items_x=num_items_x,
       num_items_y=num_items_y, category=category, model=model)
     self.lid: Optional[Lid] = None
     self.lid_height = lid_height
+
+    self.stacking_labware_with_offset = stacking_labware_with_offset
+
 
     if with_lid:
       assert lid_height > 0, "Lid height must be greater than 0 if with_lid == True."

@@ -139,6 +139,10 @@ def ot_definition_to_resource(
                     wells[i].append(tube)
 
         if display_category == "wellPlate":
+            if 'stackingOffsetWithLabware' in data.keys():
+                stacking_labware_with_offset = data['stackingOffsetWithLabware']
+            else:
+                stacking_labware_with_offset = None
             return Plate(
                 name=name,
                 size_x=size_x,
@@ -146,6 +150,7 @@ def ot_definition_to_resource(
                 size_z=size_z,
                 items=cast(List[List[Well]], wells),
                 model=data["metadata"]["displayName"],
+                stacking_labware_with_offset=stacking_labware_with_offset,
             )
         elif display_category == "reservoir":
             return Plate(
