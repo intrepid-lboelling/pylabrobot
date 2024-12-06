@@ -272,6 +272,11 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       ]
     }
 
+    # add optional stacking labware with offset for well plates
+    if isinstance(resource, Plate):
+      if resource.stacking_labware_with_offset is not None:
+        lw['stackingOffsetWithLabware'] = resource.stacking_labware_with_offset
+
     data = ot_api.labware.define(lw)
     namespace, definition, version = data["data"]["definitionUri"].split("/")
 
