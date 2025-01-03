@@ -34,6 +34,8 @@ from pylabrobot.liquid_handling.liquid_handler import (
   convert_move_to_types
 )
 
+from pylabrobot.resources.adapters import Adapter
+
 PYTHON_VERSION = sys.version_info[:2]
 
 if PYTHON_VERSION == (3, 10):
@@ -154,6 +156,9 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     have well-like attributes such as `displayVolumeUnits` and `totalLiquidVolume`. These seem to
     be ignored when they are not used for aspirating/dispensing.
     """
+    print('\n')
+    print('RESOURCE CALLBACK : ', resource)
+    print('\n')
 
     await super().assigned_resource_callback(resource)
 
@@ -288,9 +293,12 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
 
     # handle the slot name for the opentrons api backend
     slot_obj = convert_move_to_types(slot)
+    print('SLOT OBJ : ', slot_obj)
     if isinstance(slot_obj, DeckSlotMoveTo):
       location = {'slotName': str(slot_obj.loc)}
     elif isinstance(slot_obj, StagingSlotMoveTo):
+      print('STAGING SLOT MOVE TO : ',slot_obj )
+      print('type slot obj loc : ', type(slot_obj.loc))
       location = {'addressableAreaName': slot_obj.matrix_loc}
       slot = slot_obj.matrix_loc
     else:
@@ -636,6 +644,13 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       self,
       resource: Plate,
       to: Union[StagingSlotMoveTo, DeckSlotMoveTo, ModuleMoveTo, AdapterMoveTo],
+      pickup_offset_x: Optional[float]=0.,
+      pickup_offset_y: Optional[float]=0.,
+      pickup_offset_z: Optional[float]=0.,
+      drop_offset_x: Optional[float]=0.,
+      drop_offset_y: Optional[float]=0.,
+      drop_offset_z: Optional[float]=0.,
+
     ) -> None:
     """ Move a labware to a specified location. """
     if isinstance(to, DeckSlotMoveTo):
@@ -655,6 +670,12 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     ot_api.lh.move_labware(
       labware_id=self.defined_labware[resource.name],
       new_location=new_location,
+      pickup_offset_x=pickup_offset_x,
+      pickup_offset_y=pickup_offset_y,
+      pickup_offset_z=pickup_offset_z,
+      drop_offset_x=drop_offset_x,
+      drop_offset_y=drop_offset_y,
+      drop_offset_z=drop_offset_z,
     )
 
 

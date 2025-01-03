@@ -85,11 +85,11 @@ class DeckSlotMoveTo:
 class StagingSlotMoveTo:
   loc: int
 
-  def __post__init__(self):
+  def __post_init__(self):
 
     map_: dict[int,str] = {13: 'A4', 14: 'B4', 15: 'C4', 16: 'D4'}
 
-    self.matrix_loc = map_[self.value]
+    self.matrix_loc = map_[self.loc]
 
 
 @dataclass
@@ -1627,13 +1627,28 @@ class LiquidHandler(Machine):
       self,
       resource: Plate,
       to: Union[str, int], # deck slot string
+      pickup_offset_x: Optional[float]=0.,
+      pickup_offset_y: Optional[float]=0.,
+      pickup_offset_z: Optional[float]=0.,
+      drop_offset_x: Optional[float]=0.,
+      drop_offset_y: Optional[float]=0.,
+      drop_offset_z: Optional[float]=0.,
   ):
       """ Move a labware to a new location. """
 
       # try to get the move to type from the "to" argument
       to_obj = convert_move_to_types(to)
 
-      result = await self.backend.move_labware(resource=resource, to=to_obj)
+      result = await self.backend.move_labware(
+        resource=resource,
+        to=to_obj,
+        pickup_offset_x=pickup_offset_x,
+        pickup_offset_y=pickup_offset_y,
+        pickup_offset_z=pickup_offset_z,
+        drop_offset_x=drop_offset_x,
+        drop_offset_y=drop_offset_y,
+        drop_offset_z=drop_offset_z,
+      )
 
       self.deck.unassign_child_resource(resource)
       if isinstance(to_obj, (DeckSlotMoveTo, StagingSlotMoveTo)):
