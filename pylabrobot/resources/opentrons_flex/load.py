@@ -18,6 +18,8 @@ from pylabrobot.resources.tube_rack import TubeRack
 from pylabrobot.resources.well import Well
 from pylabrobot.resources.trough import Trough
 
+from pylabrobot.resources.adapters import Adapter
+
 
 if TYPE_CHECKING:
     from opentrons_shared_data.labware.dev_types import LabwareDefinition
@@ -44,7 +46,7 @@ def ot_definition_to_resource(
     size_y = data["dimensions"]["yDimension"]
     size_z = data["dimensions"]["zDimension"]
 
-    if display_category in ["wellPlate", "reservoir", "tipRack", "tubeRack"]:
+    if display_category in ["wellPlate", "reservoir", "tipRack", "tubeRack", "adapter"]:
         items = data["ordering"]
         wells: List[List[Union[TipSpot, Well, Trough, Tube]]] = (
             []
@@ -80,7 +82,7 @@ def ot_definition_to_resource(
                 )
                 max_volume = well_data.get("totalLiquidVolume")
 
-                if display_category == "wellPlate":
+                if display_category in ["wellPlate", "adapter"]:
                     well = Well(
                         name=item,
                         size_x=well_size_x,
@@ -179,7 +181,17 @@ def ot_definition_to_resource(
                 items=cast(List[List[Tube]], wells),
                 model=data["metadata"]["displayName"]
             )
+        elif display_category == "adapter":
+            return Adapter(
+                name=name,
+                size_x=size_x,
+                size_y=size_y,
+                size_z=size_z,
+                items=cast(List[List[Well]], wells),
+                model=data["metadata"]["displayName"],
+            )
     raise UnknownResourceType(f"Unknown resource type '{display_category}'.")
+
 
 
 def load_opentrons_resource(fn: str, name: str) -> Union[Plate, TipRack, TubeRack]:
