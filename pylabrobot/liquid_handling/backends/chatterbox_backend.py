@@ -80,5 +80,10 @@ class ChatterBoxBackend(LiquidHandlerBackend):
     async def move_resource(self, move: Move, **backend_kwargs):
         print(f"Moving {move}.", file=self._file)
 
-    async def move_labware(self, resource, to):
+    async def move_labware(
+        self,
+        resource,
+        to,
+        **backend_kwargs,
+    ):
         print(f"Moving {resource} to {to}.", file=self._file)
