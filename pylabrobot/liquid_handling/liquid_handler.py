@@ -59,7 +59,7 @@ logger = logging.getLogger("pylabrobot")
 
 def convert_move_to_types(
     to: Union[int, str],
-) -> Union[DeckSlotMoveTo, StagingSlotMoveTo, ModuleMoveTo]:
+) -> Union[DeckSlotMoveTo, StagingSlotMoveTo, ModuleMoveTo, AdapterMoveTo]:
   """ """
   if not isinstance(to, (int, str)):
     raise ValueError(f"Invalid move 'to' type requested: {to}")
@@ -84,8 +84,6 @@ class DeckSlotMoveTo:
 @dataclass
 class StagingSlotMoveTo:
   loc: int
-
-
 
   def __post__init__(self):
 

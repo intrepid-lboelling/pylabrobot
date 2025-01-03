@@ -277,6 +277,9 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       if resource.stacking_labware_with_offset is not None:
         lw['stackingOffsetWithLabware'] = resource.stacking_labware_with_offset
 
+    if isinstance(resource, Adapter):
+      lw['allowedRoles'] = ['adapter']
+
     data = ot_api.labware.define(lw)
     namespace, definition, version = data["data"]["definitionUri"].split("/")
 
@@ -653,7 +656,6 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       labware_id=self.defined_labware[resource.name],
       new_location=new_location,
     )
-
 
 
   async def list_connected_modules(self) -> List[dict]:
