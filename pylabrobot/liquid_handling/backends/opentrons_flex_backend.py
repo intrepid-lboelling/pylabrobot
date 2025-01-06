@@ -285,6 +285,11 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     if isinstance(resource, Adapter):
       lw['allowedRoles'] = ['adapter']
 
+    print('\n\n')
+    print('labware name : ', resource.name)
+    print('LABWARE DEFINITION : ', lw)
+    print('\n\n')
+
     data = ot_api.labware.define(lw)
     namespace, definition, version = data["data"]["definitionUri"].split("/")
 
@@ -303,6 +308,10 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       slot = slot_obj.matrix_loc
     else:
       raise ValueError(f"Unknown slot type: {slot}")
+
+    if isinstance(resource, Adapter):
+      # assign adapter to HS module
+      location = {'moduleId': '9e711448bb7dfd9df75e9dc542d894e09c3f3cd6'}
 
     ot_api.labware.add(
       load_name=definition,
@@ -660,7 +669,8 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     elif isinstance(to, ModuleMoveTo):
       new_location = {'moduleId': to.module_id}
     elif isinstance(to, AdapterMoveTo):
-      new_location = {'labwareId': to.labware_id}
+      labware_id = self.defined_labware[to.name]
+      new_location = {'labwareId': labware_id}
     else:
       raise ValueError
 

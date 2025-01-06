@@ -36,6 +36,7 @@ from pylabrobot.resources import (
   does_tip_tracking,
   does_volume_tracking
 )
+from pylabrobot.resources.adapters import Adapter
 from pylabrobot.resources.liquid import Liquid
 from pylabrobot.utils.list import expand
 
@@ -61,8 +62,11 @@ def convert_move_to_types(
     to: Union[int, str],
 ) -> Union[DeckSlotMoveTo, StagingSlotMoveTo, ModuleMoveTo, AdapterMoveTo]:
   """ """
-  if not isinstance(to, (int, str)):
+  if not isinstance(to, (int, str, Adapter)):
     raise ValueError(f"Invalid move 'to' type requested: {to}")
+
+  if isinstance(to, Adapter):
+    return AdapterMoveTo(name=to.name)
   try:
     int_to = int(to)
     if 1 <= int_to <= 12:
@@ -70,12 +74,8 @@ def convert_move_to_types(
     elif 13 <= int_to <= 16:
       return StagingSlotMoveTo(loc=int_to)
   except ValueError:
-    if isinstance(to, str) and len(to) > 12:
-      # assuming this is a module id
-      #return ModuleMoveTo(module_id=to, module_gripper=1)
-      return AdapterMoveTo(labware_id=to)
+    raise ValueError(f"Invalid move 'to' type requested: {to}")
 
-  raise ValueError(f"Invalid move 'to' type requested: {to}")
 
 @dataclass
 class DeckSlotMoveTo:
@@ -100,7 +100,7 @@ class ModuleMoveTo:
 
 @dataclass
 class AdapterMoveTo:
-  labware_id: str
+  name: str
 
 
 class LiquidHandler(Machine):
@@ -1650,15 +1650,16 @@ class LiquidHandler(Machine):
         drop_offset_z=drop_offset_z,
       )
 
-      self.deck.unassign_child_resource(resource)
-      if isinstance(to_obj, (DeckSlotMoveTo, StagingSlotMoveTo)):
-        self.deck.assign_child_at_slot(resource, to_obj.loc) # pylabrobot tracks the integer slots only
-      elif isinstance(to_obj, ModuleMoveTo):
-        self.deck.assign_child_at_slot(resource, to_obj.module_loc)
-      elif isinstance(to_obj, AdapterMoveTo):
-        self.deck.assign_child_at_slot(resource, 7)
-      else:
-        raise NotImplementedError
+      # self.deck.unassign_child_resource(resource)
+      # if isinstance(to_obj, (DeckSlotMoveTo, StagingSlotMoveTo)):
+      #   self.deck.assign_child_at_slot(resource, to_obj.loc) # pylabrobot tracks the integer slots only
+      # elif isinstance(to_obj, ModuleMoveTo):
+      #   self.deck.assign_child_at_slot(resource, to_obj.module_loc)
+      # elif isinstance(to_obj, AdapterMoveTo):
+      #   # self.deck.assign_child_at_slot(resource, 7)
+      #   pass
+      # else:
+      #   raise NotImplementedError
 
 
       return result
