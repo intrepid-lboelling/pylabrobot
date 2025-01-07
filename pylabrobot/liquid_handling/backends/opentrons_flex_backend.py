@@ -281,6 +281,14 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     if isinstance(resource, Plate):
       if resource.stacking_labware_with_offset is not None:
         lw['stackingOffsetWithLabware'] = resource.stacking_labware_with_offset
+      else:
+        lw['stackingOffsetWithLabware'] = {
+          "opentrons_universal_flat_adapter": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 12.0,
+          }
+        }
 
     if isinstance(resource, Adapter):
       lw['allowedRoles'] = ['adapter']
@@ -308,10 +316,6 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       slot = slot_obj.matrix_loc
     else:
       raise ValueError(f"Unknown slot type: {slot}")
-
-    if isinstance(resource, Adapter):
-      # assign adapter to HS module
-      location = {'moduleId': '9e711448bb7dfd9df75e9dc542d894e09c3f3cd6'}
 
     ot_api.labware.add(
       load_name=definition,
