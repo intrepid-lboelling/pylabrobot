@@ -164,6 +164,128 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       raise ValueError("Resource not on the deck.")
     return slot
 
+  async def assigned_adapter_callback(self, resource: Adapter):
+
+    slot = self.deck.get_adapter_slot(resource)
+
+    well_names = [well.name for well in resource.children]
+    if isinstance(resource, ItemizedResource):
+      ordering = utils.reshape_2d(well_names, (resource.num_items_x, resource.num_items_y))
+    else:
+      ordering = [well_names]
+
+    def _get_volume(well: Resource) -> float:
+      """ Temporary hack to get the volume of the well (in ul), TODO: store in resource. """
+      if isinstance(well, TipSpot):
+        return well.make_tip().maximal_volume
+      return well.get_size_x() * well.get_size_y() * well.get_size_z()
+
+    well_definitions = {
+      child.name: {
+        "depth": child.get_size_z(),
+        "x": cast(Coordinate, child.location).x,
+        "y": cast(Coordinate, child.location).y,
+        "z": cast(Coordinate, child.location).z,
+        "shape": "circular",
+
+        # inscribed circle has diameter equal to the width of the well
+        "diameter": child.get_size_x(),
+
+        # Opentrons requires `totalLiquidVolume`, even for tip racks!
+        "totalLiquidVolume": _get_volume(child),
+      } for child in resource.children
+    }
+
+    format_ = "irregular" # Property to determine compatibility with multichannel pipette
+    if isinstance(resource, ItemizedResource):
+      if resource.num_items_x * resource.num_items_y == 96:
+        format_ = "96Standard"
+      elif resource.num_items_x * resource.num_items_y == 384:
+        format_ = "384Standard"
+
+    # Again, use default values and only set the real ones if applicable...
+    tip_overlap: float = 0
+    total_tip_length: float = 0
+
+    display_category = "other"
+
+    lw = {
+      "schemaVersion": 2,
+      "version": 1,
+      "namespace": "pylabrobot",
+      "metadata":{
+        "displayName": resource.name,
+        "displayCategory": display_category,
+        "displayVolumeUnits": "µL",
+      },
+      "brand":{
+        "brand": "unknown",
+      },
+      "parameters":{
+        "format": format_,
+        "isTiprack": isinstance(resource, TipRack),
+        # should we get the tip length from calibration on the robot? /calibration/tip_length
+        "tipLength": total_tip_length,
+        "tipOverlap": tip_overlap,
+        "loadName": resource.name,
+        "isMagneticModuleCompatible": False, # do we really care? If yes, store.
+      },
+      "ordering": ordering,
+      "cornerOffsetFromSlot":{
+        "x": resource.get_corner_offset_x(),
+        "y": resource.get_corner_offset_y(),
+        "z": resource.get_corner_offset_z(),
+      },
+      "dimensions":{
+        "xDimension": resource.get_size_x(),
+        "yDimension": resource.get_size_y(),
+        "zDimension": resource.get_size_z(),
+      },
+      "wells": well_definitions,
+      "groups": [
+        {
+          "wells": well_names,
+          "metadata": {
+            "displayName": "all wells",
+            "displayCategory": display_category,
+            "wellBottomShape": "flat" # TODO: get this from the resource
+          },
+        }
+      ]
+    }
+
+    data = ot_api.labware.define(lw)
+    namespace, definition, version = data["data"]["definitionUri"].split("/")
+
+    # assign labware to robot
+    labware_uuid = resource.name
+
+    modules = ot_api.modules.list_connected_modules()
+    avail_hs_modules_info = []
+    for idx, mod_info in enumerate(modules):
+      if mod_info.get("moduleModel") == "heaterShakerModuleV1":
+        #avail_hs_modules_info.append(mod_info)
+        deck_slot_matrix = mod_info.get("moduleOffset").get("slot")
+        integer_deck_slot = self.convert_matrix_deck_slot_to_integer(deck_slot_matrix)
+        if integer_deck_slot == slot:
+          hs_id = mod_info.get("id")
+          print(f'Heater shaker found in slot {integer_deck_slot} with id: "{hs_id}". Assigning adapter to it.')
+
+          ot_api.labware.add(
+            load_name=definition,
+            namespace=namespace,
+            location={'moduleId': hs_id},
+            version=version,
+            labware_id=labware_uuid,
+            display_name=resource.name
+          )
+          self.deck.adapter_slots[slot-1] = resource
+
+    self.defined_labware[resource.name] = labware_uuid
+
+
+
+
   async def assigned_resource_callback(self, resource: Resource):
     """ Called when a resource is assigned to a backend.
 
@@ -171,9 +293,9 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     have well-like attributes such as `displayVolumeUnits` and `totalLiquidVolume`. These seem to
     be ignored when they are not used for aspirating/dispensing.
     """
-    # print('\n')
-    # print('RESOURCE CALLBACK : ', resource)
-    # print('\n')
+    print('\n')
+    print('RESOURCE CALLBACK : ', resource)
+    print('\n')
 
     await super().assigned_resource_callback(resource)
 
@@ -184,7 +306,14 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       resource.name == "trash_container":
       return
 
-    slot = self._get_resource_slot(resource)
+    # if isinstance(resource, Adapter):
+    #   await self.assigned_adapter_callback(resource)
+    #   return
+
+    if isinstance(resource, Adapter):
+      slot = self.deck.get_adapter_slot(resource)
+    else:
+      slot = self._get_resource_slot(resource)
 
     # check if resource is actually a Module
     if isinstance(resource, OpentronsTemperatureModuleV2):
@@ -334,16 +463,68 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     else:
       raise ValueError(f"Unknown slot type: {slot}")
 
-    ot_api.labware.add(
-      load_name=definition,
-      namespace=namespace,
-      #slot=slot,
-      location=location,
-      version=version,
-      labware_id=labware_uuid,
-      display_name=resource.name)
+    if isinstance(resource, Adapter):
+      # make sure that there is a heater shaker on the requested position
+      modules = ot_api.modules.list_connected_modules()
+      avail_hs_modules_info = []
+      for idx, mod_info in enumerate(modules):
+        if mod_info.get("moduleModel") == "heaterShakerModuleV1":
+          #avail_hs_modules_info.append(mod_info)
+          deck_slot_matrix = mod_info.get("moduleOffset").get("slot")
+          integer_deck_slot = self.convert_matrix_deck_slot_to_integer(deck_slot_matrix)
+          if integer_deck_slot == slot:
+            hs_id = mod_info.get("id")
+            print(f'Heater shaker found in slot {integer_deck_slot} with id: "{hs_id}". Assigning adapter to it.')
+
+            ot_api.labware.add(
+              load_name=definition,
+              namespace=namespace,
+              location={'moduleId': hs_id},
+              version=version,
+              labware_id=labware_uuid,
+              display_name=resource.name
+            )
+            self.deck.adapter_slots[slot-1] = resource
+    else:
+      try:
+        integer_slot = self.convert_matrix_deck_slot_to_integer(slot)
+      except TypeError:
+        integer_slot = slot
+
+      existing_slot_adapter = self.deck.adapter_slots[integer_slot-1]
+      if isinstance(existing_slot_adapter, Adapter):
+        # we have an adaper here, so we need to assign the labware to the adapter
+        print('EXISITING SLOT ADAPTER : ', existing_slot_adapter)
+        print('EXISITING SLOT ADAPTER NAME : ', existing_slot_adapter.name)
+        ot_api.labware.add(
+          load_name=definition,
+          namespace=namespace,
+          location={'labwareId': existing_slot_adapter.name},
+          labware_id=labware_uuid,
+          version=version,
+          display_name=resource.name
+        )
+      else:
+        ot_api.labware.add(
+          load_name=definition,
+          namespace=namespace,
+          #slot=slot,
+          location=location,
+          version=version,
+          labware_id=labware_uuid,
+          display_name=resource.name)
 
     self.defined_labware[resource.name] = labware_uuid
+
+
+  @staticmethod
+  def convert_matrix_deck_slot_to_integer(deck_slot_matrix: str) -> int:
+    row_mapping = {'A': 4, 'B': 3, 'C': 2, 'D': 1}
+    row = deck_slot_matrix[0]
+    column = int(deck_slot_matrix[1])
+    return (row_mapping[row] - 1) * 3 + column
+
+
 
   async def unassigned_resource_callback(self, name: str):
     await super().unassigned_resource_callback(name)
@@ -709,6 +890,7 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     else:
       raise ValueError
 
+    print('NEW LOCATION : ', new_location)
     ot_api.lh.home_gripper()
 
     # call to opentrons api to make the move

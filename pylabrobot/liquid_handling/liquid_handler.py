@@ -73,7 +73,7 @@ def convert_move_to_types(
     raise ValueError(f"Invalid move 'to' type requested: {to}")
 
   if isinstance(to, Adapter):
-    return AdapterMoveTo(name=to.name)
+    return AdapterMoveTo(name=to.name, obj=to)
   try:
     int_to = int(to)
     if 1 <= int_to <= 12:
@@ -116,6 +116,7 @@ class ModuleMoveTo:
 @dataclass
 class AdapterMoveTo:
   name: str
+  obj: Adapter
 
 
 class LiquidHandler(Machine):
@@ -1668,6 +1669,9 @@ class LiquidHandler(Machine):
       # try to get the move to type from the "to" argument
       to_obj = convert_move_to_types(to, platform_present=platform_present)
 
+      print('RESOURCE TO BE MOVED : ', resource)
+      print('TO OBJECT : ', to_obj)
+
       result = await self.backend.move_labware(
         resource=resource,
         to=to_obj,
@@ -1686,7 +1690,28 @@ class LiquidHandler(Machine):
       elif isinstance(to_obj, ModuleMoveTo):
         self.deck.assign_child_at_slot(resource, to_obj.module_loc)
       elif isinstance(to_obj, AdapterMoveTo):
-        raise NotImplementedError
+        print('WE ARE ON THE RIGHT TRACK!')
+        # assign the resource to the adapter
+        # atempting to get the adapter at this slot
+        print('DECK SLOTS : ', self.deck.slots)
+        print('ADAPTER SLOTS : ', self.deck.adapter_slots)
+        adapter_slot = self.deck.get_adapter_slot(to_obj.obj)
+        assert adapter_slot is not None
+        print('adapter_slot:', adapter_slot)
+        self.deck.assign_child_at_slot(resource, adapter_slot)
+
+        print('\n\n')
+        print('DECK SLOTS')
+        for idx, res in enumerate(self.deck.slots):
+          print(f'{idx} : {res}')
+
+        print('\n\n')
+        print('ADAPTER SLOTS')
+        for idx, res in enumerate(self.deck.adapter_slots):
+          print(f'{idx} : {res}')
+
+
+
       elif isinstance(to_obj, TransferPlatformMoveTo):
         self.deck.assign_child_at_slot(resource, to_obj.loc)
       else:

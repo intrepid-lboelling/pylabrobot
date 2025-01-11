@@ -6,6 +6,8 @@ from pylabrobot.resources.deck import Deck
 from pylabrobot.resources.resource import Resource
 from pylabrobot.resources.trash import Trash
 
+from pylabrobot.resources.adapters import Adapter
+
 
 class OTDeck(Deck):
   """ The Opentrons deck for the flex robot. """
@@ -18,6 +20,8 @@ class OTDeck(Deck):
     super().__init__(size_x=size_x, size_y=size_y, size_z=size_z, origin=origin)
 
     self.slots: List[Optional[Resource]] = [None] * 16
+
+    self.adapter_slots: List[Optional[Resource]] = [None] * 16
 
     self.slot_locations = [
       Coordinate(x=0.0,   y=0.0,   z=0.0),
@@ -70,6 +74,12 @@ class OTDeck(Deck):
     trash_container.assign_child_resource(actual_trash, location=Coordinate.zero())
     self.assign_child_at_slot(trash_container, 10)
 
+  def get_resource_at_slot(self, slot: int) -> Optional[Resource]:
+    """ Get the resource at a specific slot. """
+    if slot not in range(1, 17):
+      raise ValueError("slot must be between 1 and 16")
+    return self.slots[slot-1]
+
   def assign_child_resource(
     self,
     resource: Resource,
@@ -94,9 +104,13 @@ class OTDeck(Deck):
       raise ValueError("slot must be between 1 and 16")
 
     if self.slots[slot-1] is not None:
-      raise ValueError(f"Spot {slot} is already occupied")
+        raise ValueError(f"Spot {slot} is already occupied by non-adapter labware")
+    if isinstance(resource, Adapter):
+      # don't assign this to the slots list, but to the adapter_slots list
+      self.adapter_slots[slot-1] = resource
+    else:
+      self.slots[slot-1] = resource
 
-    self.slots[slot-1] = resource
     super().assign_child_resource(resource, location=self.slot_locations[slot-1])
 
   def unassign_child_resource(self, resource: Resource):
@@ -112,6 +126,11 @@ class OTDeck(Deck):
     if resource not in self.slots:
       return None
     return self.slots.index(resource) + 1
+
+  def get_adapter_slot(self, resource: Resource) -> Optional[int]:
+    if resource not in self.adapter_slots:
+      return None
+    return self.adapter_slots.index(resource) + 1
 
   def summary(self) -> str:
     """ Get a summary of the deck.

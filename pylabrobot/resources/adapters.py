@@ -52,6 +52,7 @@ class Adapter(ItemizedResource[Well]):
     with_lid: bool = False,
     model: Optional[str] = None,
     stacking_labware_with_offset: Optional[dict[dict[str,float]]] = None
+
   ):
     """ Initialize an Adapter resource.
 
@@ -85,12 +86,23 @@ class Adapter(ItemizedResource[Well]):
 
     self.allowed_roles = ["adapter"]
 
+    self._hs_module_deck_slot = None
+
 
     if with_lid:
       assert lid_height > 0, "Lid height must be greater than 0 if with_lid == True."
 
       lid = Lid(name + "_lid", size_x=size_x, size_y=size_y, size_z=lid_height)
       self.assign_child_resource(lid)
+
+  @property
+  def hs_module_deck_slot(self):
+    return self._hs_module_deck_slot
+
+  @hs_module_deck_slot.setter
+  def hs_module_deck_slot(self, slot: int):
+    self._hs_module_deck_slot = slot
+
 
   def assign_child_resource(
     self,
