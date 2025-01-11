@@ -121,6 +121,7 @@ def ot_definition_to_resource(
 
                         return make_tip
 
+
                     tip_spot = TipSpot(
                         name=item,
                         size_x=well_size_x,

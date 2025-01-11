@@ -31,6 +31,7 @@ from pylabrobot.liquid_handling.liquid_handler import (
   StagingSlotMoveTo,
   ModuleMoveTo,
   AdapterMoveTo,
+  TransferPlatformMoveTo,
   convert_move_to_types
 )
 
@@ -81,9 +82,11 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     "p1000_single_gen2": 1000,
     "p300_single_gen3": 300,
     "p1000_single_gen3": 1000,
-    "p1000_single_flex": 200,
-    "p1000_multi_flex": 200
+    "p1000_single_flex": 1000,
+    "p1000_multi_flex": 1000
   }
+
+
 
   def __init__(self, host: str, port: int = 31950):
     super().__init__()
@@ -122,6 +125,9 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
 
     self.left_pipette_has_tip = self.right_pipette_has_tip = False
 
+    self.left_pipette_tip_max_vol = None
+    self.right_pipette_tip_max_vol = None
+
     # get api version
     health = ot_api.health.get()
     self.ot_api_version = health["api_version"]
@@ -133,6 +139,15 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
   async def stop(self):
     self.defined_labware = {}
     await super().stop()
+
+  def _tip_to_asp_disp_z_offset(self, max_vol: float) -> float:
+    """ Get the z offset for aspirating and dispensing with a tip. """
+    if max_vol == 1000.:
+      return 0.0
+    elif max_vol == 200.:
+      return 37.0
+    else:
+      raise NotImplementedError(f"Unimplemented tip volume: {max_vol}")
 
   def _get_resource_slot(self, resource: Resource) -> str:
     """ Get the ultimate slot of a given resource. Some resources are assigned to another resource,
@@ -156,9 +171,9 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     have well-like attributes such as `displayVolumeUnits` and `totalLiquidVolume`. These seem to
     be ignored when they are not used for aspirating/dispensing.
     """
-    print('\n')
-    print('RESOURCE CALLBACK : ', resource)
-    print('\n')
+    # print('\n')
+    # print('RESOURCE CALLBACK : ', resource)
+    # print('\n')
 
     await super().assigned_resource_callback(resource)
 
@@ -293,10 +308,10 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     if isinstance(resource, Adapter):
       lw['allowedRoles'] = ['adapter']
 
-    print('\n\n')
-    print('labware name : ', resource.name)
-    print('LABWARE DEFINITION : ', lw)
-    print('\n\n')
+    # print('\n\n')
+    # print('labware name : ', resource.name)
+    # print('LABWARE DEFINITION : ', lw)
+    # print('\n\n')
 
     data = ot_api.labware.define(lw)
     namespace, definition, version = data["data"]["definitionUri"].split("/")
@@ -306,14 +321,16 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
 
     # handle the slot name for the opentrons api backend
     slot_obj = convert_move_to_types(slot)
-    print('SLOT OBJ : ', slot_obj)
+    # print('SLOT OBJ : ', slot_obj)
     if isinstance(slot_obj, DeckSlotMoveTo):
       location = {'slotName': str(slot_obj.loc)}
     elif isinstance(slot_obj, StagingSlotMoveTo):
-      print('STAGING SLOT MOVE TO : ',slot_obj )
-      print('type slot obj loc : ', type(slot_obj.loc))
+      # print('STAGING SLOT MOVE TO : ',slot_obj )
+      # print('type slot obj loc : ', type(slot_obj.loc))
       location = {'addressableAreaName': slot_obj.matrix_loc}
       slot = slot_obj.matrix_loc
+    elif isinstance(slot_obj, TransferPlatformMoveTo):
+      location = {'slotName': str(slot_obj.loc)}
     else:
       raise ValueError(f"Unknown slot type: {slot}")
 
@@ -353,13 +370,15 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     """
 
     if self.left_pipette is not None:
-      left_volume = OpentronsFlexBackend.pipette_name2volume[self.left_pipette["name"]]
-      if left_volume == tip_max_volume and with_tip == self.left_pipette_has_tip:
+      left_volume_ = OpentronsFlexBackend.pipette_name2volume[self.left_pipette["name"]]
+      left_vol = self.left_pipette_tip_max_vol if with_tip else tip_max_volume
+      if left_vol == tip_max_volume and with_tip == self.left_pipette_has_tip:
         return cast(str, self.left_pipette["pipetteId"])
 
     if self.right_pipette is not None:
-      right_volume = OpentronsFlexBackend.pipette_name2volume[self.right_pipette["name"]]
-      if right_volume == tip_max_volume and with_tip == self.right_pipette_has_tip:
+      right_volume_ = OpentronsFlexBackend.pipette_name2volume[self.right_pipette["name"]]
+      right_vol = self.right_pipette_tip_max_vol if with_tip else tip_max_volume
+      if right_vol == tip_max_volume and with_tip == self.right_pipette_has_tip:
         return cast(str, self.right_pipette["pipetteId"])
 
     return None
@@ -403,8 +422,10 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
 
     if pipette_id == self.left_pipette["pipetteId"]:
       self.left_pipette_has_tip = True
+      self.left_pipette_tip_max_vol = op.resource.get_tip().maximal_volume
     else:
       self.right_pipette_has_tip = True
+      self.right_pipette_tip_max_vol = op.resource.get_tip().maximal_volume
 
 
 
@@ -471,11 +492,13 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
 
     if self.left_pipette is not None and pipette_id == self.left_pipette["pipetteId"]:
       self.left_pipette_has_tip = False
+      self.left_pipette_tip_max_vol = None
     else:
       self.right_pipette_has_tip = False
+      self.right_pipette_tip_max_vol = None
 
 
-  def select_liquid_pipette(self, volume: float) -> Optional[str]:
+  def select_liquid_pipette(self, volume: float) -> Optional[tuple[str, float]]:
     """ Select a pipette based on volume for an aspiration or dispense.
 
     The volume of the tip mounted on the head must be greater than the volume to aspirate or
@@ -492,13 +515,13 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
 
     if self.left_pipette is not None:
       left_volume = OpentronsFlexBackend.pipette_name2volume[self.left_pipette["name"]]
-      if left_volume >= volume and self.left_pipette_has_tip:
-        return cast(str, self.left_pipette["pipetteId"])
+      if left_volume >= volume and self.left_pipette_has_tip and self.left_pipette_tip_max_vol >= volume:
+        return cast(str, self.left_pipette["pipetteId"]), self.left_pipette_tip_max_vol
 
     if self.right_pipette is not None:
       right_volume = OpentronsFlexBackend.pipette_name2volume[self.right_pipette["name"]]
-      if right_volume >= volume and self.right_pipette_has_tip:
-        return cast(str, self.right_pipette["pipetteId"])
+      if right_volume >= volume and self.right_pipette_has_tip and self.right_pipette_tip_max_vol >= volume:
+        return cast(str, self.right_pipette["pipetteId"]), self.right_pipette_tip_max_vol
 
     return None
 
@@ -545,9 +568,10 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     # this feels wrong, why should backends check?
     assert op.resource.parent is not None, "must not be a floating resource"
 
+
     volume = op.volume
 
-    pipette_id   = self.select_liquid_pipette(volume)
+    pipette_id, tip_max_vol = self.select_liquid_pipette(volume)
     if pipette_id is None:
       raise NoChannelError("No pipette channel of right type with tip available.")
 
@@ -562,7 +586,9 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       offset_x = offset_y = offset_z = 0
 
     # fixed z offset for aspirate and dispense commands with flex
-    offset_z -= self.asp_disp_z_offset
+    offset_z -= self._tip_to_asp_disp_z_offset(tip_max_vol)
+
+    #print('ASPIRATE OFFSET Z : ', offset_z)
 
     # Fix collisions after blowout?
     ot_api.lh.move_to_well(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
@@ -612,7 +638,7 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
 
     volume = op.volume
 
-    pipette_id = self.select_liquid_pipette(volume)
+    pipette_id, tip_max_vol = self.select_liquid_pipette(volume)
     if pipette_id is None:
       raise NoChannelError("No pipette channel of right type with tip available.")
 
@@ -627,7 +653,9 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       offset_x = offset_y = offset_z = 0
 
     # fixed z dimension offsert for aspirate and dispense ops
-    offset_z -= self.asp_disp_z_offset
+    offset_z -= self._tip_to_asp_disp_z_offset(tip_max_vol)
+
+    #print('DISPENSE OFFSET Z : ', offset_z)
 
     ot_api.lh.dispense(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
       volume=volume, flow_rate=flow_rate, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z, push_out=push_out)
@@ -656,7 +684,7 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
   async def move_labware(
       self,
       resource: Plate,
-      to: Union[StagingSlotMoveTo, DeckSlotMoveTo, ModuleMoveTo, AdapterMoveTo],
+      to: Union[StagingSlotMoveTo, DeckSlotMoveTo, ModuleMoveTo, AdapterMoveTo, TransferPlatformMoveTo],
       pickup_offset_x: Optional[float]=0.,
       pickup_offset_y: Optional[float]=0.,
       pickup_offset_z: Optional[float]=0.,
@@ -675,6 +703,9 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     elif isinstance(to, AdapterMoveTo):
       labware_id = self.defined_labware[to.name]
       new_location = {'labwareId': labware_id}
+    elif isinstance(to, TransferPlatformMoveTo):
+      new_location = {'slotName': str(to.loc)}
+      drop_offset_z += to.height
     else:
       raise ValueError
 

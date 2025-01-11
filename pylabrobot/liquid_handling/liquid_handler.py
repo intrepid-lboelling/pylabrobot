@@ -60,7 +60,14 @@ logger = logging.getLogger("pylabrobot")
 
 def convert_move_to_types(
     to: Union[int, str],
-) -> Union[DeckSlotMoveTo, StagingSlotMoveTo, ModuleMoveTo, AdapterMoveTo]:
+    platform_present: bool = True,
+) -> Union[
+    DeckSlotMoveTo,
+    StagingSlotMoveTo,
+    ModuleMoveTo,
+    AdapterMoveTo,
+    TransferPlatformMoveTo,
+]:
   """ """
   if not isinstance(to, (int, str, Adapter)):
     raise ValueError(f"Invalid move 'to' type requested: {to}")
@@ -70,12 +77,20 @@ def convert_move_to_types(
   try:
     int_to = int(to)
     if 1 <= int_to <= 12:
+      if int_to == 2 and platform_present:
+        return TransferPlatformMoveTo()
       return DeckSlotMoveTo(loc=int_to)
     elif 13 <= int_to <= 16:
       return StagingSlotMoveTo(loc=int_to)
   except ValueError:
     raise ValueError(f"Invalid move 'to' type requested: {to}")
 
+
+
+@dataclass
+class TransferPlatformMoveTo:
+  loc: int = 2
+  height: float = 49.85
 
 @dataclass
 class DeckSlotMoveTo:
@@ -1633,11 +1648,25 @@ class LiquidHandler(Machine):
       drop_offset_x: Optional[float]=0.,
       drop_offset_y: Optional[float]=0.,
       drop_offset_z: Optional[float]=0.,
+      platform_present: bool = True,
   ):
       """ Move a labware to a new location. """
 
+      # handle any parameterization of the pickup (from)
+      current_slot = self.deck.get_slot(resource)
+      if current_slot is None:
+        raise ValueError("Resource is not on the deck")
+
+      if current_slot == 2 and platform_present:
+        # add offset for pickup from the platform
+        pickup_offset_z += TransferPlatformMoveTo().height
+
+      print(f"current slot: {current_slot}")
+      print('pickup_offset_z:', pickup_offset_z)
+
+
       # try to get the move to type from the "to" argument
-      to_obj = convert_move_to_types(to)
+      to_obj = convert_move_to_types(to, platform_present=platform_present)
 
       result = await self.backend.move_labware(
         resource=resource,
@@ -1648,18 +1677,20 @@ class LiquidHandler(Machine):
         drop_offset_x=drop_offset_x,
         drop_offset_y=drop_offset_y,
         drop_offset_z=drop_offset_z,
+
       )
 
-      # self.deck.unassign_child_resource(resource)
-      # if isinstance(to_obj, (DeckSlotMoveTo, StagingSlotMoveTo)):
-      #   self.deck.assign_child_at_slot(resource, to_obj.loc) # pylabrobot tracks the integer slots only
-      # elif isinstance(to_obj, ModuleMoveTo):
-      #   self.deck.assign_child_at_slot(resource, to_obj.module_loc)
-      # elif isinstance(to_obj, AdapterMoveTo):
-      #   # self.deck.assign_child_at_slot(resource, 7)
-      #   pass
-      # else:
-      #   raise NotImplementedError
+      self.deck.unassign_child_resource(resource)
+      if isinstance(to_obj, (DeckSlotMoveTo, StagingSlotMoveTo)):
+        self.deck.assign_child_at_slot(resource, to_obj.loc) # pylabrobot tracks the integer slots only
+      elif isinstance(to_obj, ModuleMoveTo):
+        self.deck.assign_child_at_slot(resource, to_obj.module_loc)
+      elif isinstance(to_obj, AdapterMoveTo):
+        raise NotImplementedError
+      elif isinstance(to_obj, TransferPlatformMoveTo):
+        self.deck.assign_child_at_slot(resource, to_obj.loc)
+      else:
+        raise NotImplementedError
 
 
       return result
