@@ -88,6 +88,10 @@ class Adapter(ItemizedResource[Well]):
 
     self._hs_module_deck_slot = None
 
+    # hs adapters cannot be handled by the flex gripper
+    self.grip_force = None
+    self.grip_height_from_labware_bottom = None
+
 
     if with_lid:
       assert lid_height > 0, "Lid height must be greater than 0 if with_lid == True."

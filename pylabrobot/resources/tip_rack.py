@@ -101,9 +101,14 @@ class TipRack(ItemizedResource[TipSpot], metaclass=ABCMeta):
     category: str = "tip_rack",
     model: Optional[str] = None,
     with_tips: bool = True,
+    grip_force: Optional[float] = None,
+    grip_height_from_labware_bottom: Optional[float] = None,
   ):
     super().__init__(name, size_x, size_y, size_z, items=items, num_items_x=num_items_x,
       num_items_y=num_items_y, category=category, model=model)
+
+    self.grip_force = grip_force
+    self.grip_height_from_labware_bottom = grip_height_from_labware_bottom
 
     if items is not None and len(items) > 0:
       if with_tips:

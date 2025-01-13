@@ -15,6 +15,8 @@ class TubeRack(ItemizedResource[Tube]):
     size_z: float,
     items: List[List[Tube]],
     model: Optional[str] = None,
+    grip_force: Optional[float] = None,
+    grip_height_from_labware_bottom: Optional[float] = None
   ):
     """ Initialize a TubeRack resource.
 
@@ -33,6 +35,9 @@ class TubeRack(ItemizedResource[Tube]):
       size_z=size_z,
       items=items,
       model=model)
+
+    self.grip_force = grip_force
+    self.grip_height_from_labware_bottom = grip_height_from_labware_bottom
 
   def disable_volume_trackers(self) -> None:
     """ Disable volume tracking for all wells in the plate. """

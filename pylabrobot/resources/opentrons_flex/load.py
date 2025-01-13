@@ -46,6 +46,10 @@ def ot_definition_to_resource(
     size_y = data["dimensions"]["yDimension"]
     size_z = data["dimensions"]["zDimension"]
 
+    # flex gripper parameters
+    grip_force = data.get("gripForce", None)
+    grip_height_from_labware_bottom = data.get("gripHeightFromLabwareBottom", None)
+
     if display_category in ["wellPlate", "reservoir", "tipRack", "tubeRack", "adapter"]:
         items = data["ordering"]
         wells: List[List[Union[TipSpot, Well, Trough, Tube]]] = (
@@ -154,6 +158,8 @@ def ot_definition_to_resource(
                 items=cast(List[List[Well]], wells),
                 model=data["metadata"]["displayName"],
                 stacking_labware_with_offset=stacking_labware_with_offset,
+                grip_force=grip_force,
+                grip_height_from_labware_bottom=grip_height_from_labware_bottom,
             )
         elif display_category == "reservoir":
             return Plate(
@@ -163,6 +169,8 @@ def ot_definition_to_resource(
                 size_z=size_z,
                 items=cast(List[List[Well]], wells),
                 model=data["metadata"]["displayName"],
+                grip_force=grip_force,
+                grip_height_from_labware_bottom=grip_height_from_labware_bottom,
             )
         elif display_category == "tipRack":
             return TipRack(
@@ -172,6 +180,8 @@ def ot_definition_to_resource(
                 size_z=size_z,
                 items=cast(List[List[TipSpot]], wells),
                 model=data["metadata"]["displayName"],
+                grip_force=grip_force,
+                grip_height_from_labware_bottom=grip_height_from_labware_bottom,
             )
         elif display_category == "tubeRack":
             return TubeRack(
@@ -180,7 +190,9 @@ def ot_definition_to_resource(
                 size_y=size_y,
                 size_z=size_z,
                 items=cast(List[List[Tube]], wells),
-                model=data["metadata"]["displayName"]
+                model=data["metadata"]["displayName"],
+                grip_force=grip_force,
+                grip_height_from_labware_bottom=grip_height_from_labware_bottom,
             )
         elif display_category == "adapter":
             return Adapter(

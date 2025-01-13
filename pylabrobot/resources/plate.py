@@ -50,7 +50,9 @@ class Plate(ItemizedResource[Well]):
     lid_height: float = 0,
     with_lid: bool = False,
     model: Optional[str] = None,
-    stacking_labware_with_offset: Optional[dict[dict[str,float]]] = None
+    stacking_labware_with_offset: Optional[dict[dict[str,float]]] = None,
+    grip_force: Optional[float] = None,
+    grip_height_from_labware_bottom: Optional[float] = None,
   ):
     """ Initialize a Plate resource.
 
@@ -81,6 +83,9 @@ class Plate(ItemizedResource[Well]):
     self.lid_height = lid_height
 
     self.stacking_labware_with_offset = stacking_labware_with_offset
+
+    self.grip_force = grip_force
+    self.grip_height_from_labware_bottom = grip_height_from_labware_bottom
 
 
     if with_lid:

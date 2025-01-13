@@ -64,8 +64,6 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     'z': 175.,
   }
 
-  asp_disp_z_offset = 37.0 # mm
-
 
   pipette_name2volume = {
     "p10_single": 10,
@@ -163,126 +161,6 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     if slot is None:
       raise ValueError("Resource not on the deck.")
     return slot
-
-  async def assigned_adapter_callback(self, resource: Adapter):
-
-    slot = self.deck.get_adapter_slot(resource)
-
-    well_names = [well.name for well in resource.children]
-    if isinstance(resource, ItemizedResource):
-      ordering = utils.reshape_2d(well_names, (resource.num_items_x, resource.num_items_y))
-    else:
-      ordering = [well_names]
-
-    def _get_volume(well: Resource) -> float:
-      """ Temporary hack to get the volume of the well (in ul), TODO: store in resource. """
-      if isinstance(well, TipSpot):
-        return well.make_tip().maximal_volume
-      return well.get_size_x() * well.get_size_y() * well.get_size_z()
-
-    well_definitions = {
-      child.name: {
-        "depth": child.get_size_z(),
-        "x": cast(Coordinate, child.location).x,
-        "y": cast(Coordinate, child.location).y,
-        "z": cast(Coordinate, child.location).z,
-        "shape": "circular",
-
-        # inscribed circle has diameter equal to the width of the well
-        "diameter": child.get_size_x(),
-
-        # Opentrons requires `totalLiquidVolume`, even for tip racks!
-        "totalLiquidVolume": _get_volume(child),
-      } for child in resource.children
-    }
-
-    format_ = "irregular" # Property to determine compatibility with multichannel pipette
-    if isinstance(resource, ItemizedResource):
-      if resource.num_items_x * resource.num_items_y == 96:
-        format_ = "96Standard"
-      elif resource.num_items_x * resource.num_items_y == 384:
-        format_ = "384Standard"
-
-    # Again, use default values and only set the real ones if applicable...
-    tip_overlap: float = 0
-    total_tip_length: float = 0
-
-    display_category = "other"
-
-    lw = {
-      "schemaVersion": 2,
-      "version": 1,
-      "namespace": "pylabrobot",
-      "metadata":{
-        "displayName": resource.name,
-        "displayCategory": display_category,
-        "displayVolumeUnits": "µL",
-      },
-      "brand":{
-        "brand": "unknown",
-      },
-      "parameters":{
-        "format": format_,
-        "isTiprack": isinstance(resource, TipRack),
-        # should we get the tip length from calibration on the robot? /calibration/tip_length
-        "tipLength": total_tip_length,
-        "tipOverlap": tip_overlap,
-        "loadName": resource.name,
-        "isMagneticModuleCompatible": False, # do we really care? If yes, store.
-      },
-      "ordering": ordering,
-      "cornerOffsetFromSlot":{
-        "x": resource.get_corner_offset_x(),
-        "y": resource.get_corner_offset_y(),
-        "z": resource.get_corner_offset_z(),
-      },
-      "dimensions":{
-        "xDimension": resource.get_size_x(),
-        "yDimension": resource.get_size_y(),
-        "zDimension": resource.get_size_z(),
-      },
-      "wells": well_definitions,
-      "groups": [
-        {
-          "wells": well_names,
-          "metadata": {
-            "displayName": "all wells",
-            "displayCategory": display_category,
-            "wellBottomShape": "flat" # TODO: get this from the resource
-          },
-        }
-      ]
-    }
-
-    data = ot_api.labware.define(lw)
-    namespace, definition, version = data["data"]["definitionUri"].split("/")
-
-    # assign labware to robot
-    labware_uuid = resource.name
-
-    modules = ot_api.modules.list_connected_modules()
-    avail_hs_modules_info = []
-    for idx, mod_info in enumerate(modules):
-      if mod_info.get("moduleModel") == "heaterShakerModuleV1":
-        #avail_hs_modules_info.append(mod_info)
-        deck_slot_matrix = mod_info.get("moduleOffset").get("slot")
-        integer_deck_slot = self.convert_matrix_deck_slot_to_integer(deck_slot_matrix)
-        if integer_deck_slot == slot:
-          hs_id = mod_info.get("id")
-          print(f'Heater shaker found in slot {integer_deck_slot} with id: "{hs_id}". Assigning adapter to it.')
-
-          ot_api.labware.add(
-            load_name=definition,
-            namespace=namespace,
-            location={'moduleId': hs_id},
-            version=version,
-            labware_id=labware_uuid,
-            display_name=resource.name
-          )
-          self.deck.adapter_slots[slot-1] = resource
-
-    self.defined_labware[resource.name] = labware_uuid
-
 
 
 
@@ -423,19 +301,32 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
 
     # add optional stacking labware with offset for well plates
     if isinstance(resource, Plate):
-      if resource.stacking_labware_with_offset is not None:
-        lw['stackingOffsetWithLabware'] = resource.stacking_labware_with_offset
-      else:
-        lw['stackingOffsetWithLabware'] = {
-          "opentrons_universal_flat_adapter": {
-            "x": 0.0,
-            "y": 0.0,
-            "z": 12.0,
-          }
+      lw['stackingOffsetWithLabware'] = {
+        "opentrons_universal_flat_adapter": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 12.0,
+        },
+        "opentrons_universal_flat_adapter_1": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 12.0,
+        },
+        "opentrons_universal_flat_adapter_2": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 12.0,
         }
+      }
 
     if isinstance(resource, Adapter):
       lw['allowedRoles'] = ['adapter']
+
+    # optional labware parameters for opentrons flex gripper
+    if resource.grip_force is not None:
+      lw['gripForce'] = resource.grip_force
+    if resource.grip_height_from_labware_bottom is not None:
+      lw['gripHeightFromLabwareBottom'] = resource.grip_height_from_labware_bottom
 
     # print('\n\n')
     # print('labware name : ', resource.name)
