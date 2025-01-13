@@ -796,17 +796,24 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     print('NEW LOCATION : ', new_location)
     ot_api.lh.home_gripper()
 
-    # call to opentrons api to make the move
-    ot_api.lh.move_labware(
-      labware_id=self.defined_labware[resource.name],
-      new_location=new_location,
-      pickup_offset_x=pickup_offset_x,
-      pickup_offset_y=pickup_offset_y,
-      pickup_offset_z=pickup_offset_z,
-      drop_offset_x=drop_offset_x,
-      drop_offset_y=drop_offset_y,
-      drop_offset_z=drop_offset_z,
-    )
+    # catch RuntimeErrors and handle them gracefully to prevent code from breaking
+    try:
+      # call to opentrons api to make the move
+      ot_api.lh.move_labware(
+        labware_id=self.defined_labware[resource.name],
+        new_location=new_location,
+        pickup_offset_x=pickup_offset_x,
+        pickup_offset_y=pickup_offset_y,
+        pickup_offset_z=pickup_offset_z,
+        drop_offset_x=drop_offset_x,
+        drop_offset_y=drop_offset_y,
+        drop_offset_z=drop_offset_z,
+      )
+    except RuntimeError as e:
+      if str(e) == "Command timed out":
+        print('Warning: moveLabware command timed out, but continuing execution.')
+      else:
+        raise
 
 
   async def list_connected_modules(self) -> List[dict]:
