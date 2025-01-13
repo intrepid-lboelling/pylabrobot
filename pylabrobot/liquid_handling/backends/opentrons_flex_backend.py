@@ -316,7 +316,22 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
           "x": 0.0,
           "y": 0.0,
           "z": 12.0,
-        }
+        },
+        "opentrons_96_deep_well_adapter": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 17.55,
+        },
+        "opentrons_96_deep_well_adapter_1": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 17.55,
+        },
+        "opentrons_96_deep_well_adapter_2": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 17.55,
+          },
       }
 
     if isinstance(resource, Adapter):
@@ -324,14 +339,11 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
 
     # optional labware parameters for opentrons flex gripper
     if resource.grip_force is not None:
+      print('GRIP FORCE FOUND: ', resource.grip_force)
       lw['gripForce'] = resource.grip_force
     if resource.grip_height_from_labware_bottom is not None:
+      print('GRIP HEIGHT FOUND: ', resource.grip_height_from_labware_bottom)
       lw['gripHeightFromLabwareBottom'] = resource.grip_height_from_labware_bottom
-
-    # print('\n\n')
-    # print('labware name : ', resource.name)
-    # print('LABWARE DEFINITION : ', lw)
-    # print('\n\n')
 
     data = ot_api.labware.define(lw)
     namespace, definition, version = data["data"]["definitionUri"].split("/")
