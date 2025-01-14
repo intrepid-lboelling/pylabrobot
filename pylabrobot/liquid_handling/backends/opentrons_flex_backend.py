@@ -396,6 +396,8 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
 
       existing_slot_adapter = self.deck.adapter_slots[integer_slot-1]
       if isinstance(existing_slot_adapter, Adapter):
+        print('SLOT : ', slot)
+        print('INTEGER SLOT : ', integer_slot)
         # we have an adaper here, so we need to assign the labware to the adapter
         print('EXISITING SLOT ADAPTER : ', existing_slot_adapter)
         print('EXISITING SLOT ADAPTER NAME : ', existing_slot_adapter.name)
@@ -422,6 +424,9 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
 
   @staticmethod
   def convert_matrix_deck_slot_to_integer(deck_slot_matrix: str) -> int:
+    # staging area slots are treated differently than the rest of the deck
+    if deck_slot_matrix in ['A4', 'B4', 'C4', 'D4']:
+        return {'A4': 13, 'B4': 14, 'C4': 15, 'D4': 16}[deck_slot_matrix]
     row_mapping = {'A': 4, 'B': 3, 'C': 2, 'D': 1}
     row = deck_slot_matrix[0]
     column = int(deck_slot_matrix[1])
@@ -640,7 +645,8 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       "p20_single_gen2": 3.78,
       "p300_single_gen2": 46.43,
       "p1000_single_gen2": 137.35,
-      "p20_multi_gen2": 7.6
+      "p20_multi_gen2": 7.6,
+      "p1000_multi_flex": 500,
     }[pipette_name]
 
   async def aspirate(self, ops: List[Aspiration], use_channels: List[int]):
@@ -703,7 +709,8 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       "p20_single_gen2": 7.56,
       "p300_single_gen2": 92.86,
       "p1000_single_gen2": 274.7,
-      "p20_multi_gen2": 7.6
+      "p20_multi_gen2": 7.6,
+      "p1000_multi_flex": 500,
     }[pipette_name]
 
   async def dispense(self, ops: List[Dispense], use_channels: List[int], push_outs: Optional[List[float]]=None):
