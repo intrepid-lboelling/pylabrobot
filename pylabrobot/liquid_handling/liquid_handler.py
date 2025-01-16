@@ -1665,15 +1665,10 @@ class LiquidHandler(Machine):
         # add offset for pickup from the platform
         pickup_offset_z += TransferPlatformMoveTo().height
 
-      print(f"current slot: {current_slot}")
-      print('pickup_offset_z:', pickup_offset_z)
-
-
       # try to get the move to type from the "to" argument
       to_obj = convert_move_to_types(to, platform_present=platform_present)
 
-      print('RESOURCE TO BE MOVED : ', resource)
-      print('TO OBJECT : ', to_obj)
+      logger.info(f'Moving {resource} from {current_slot} to {to_obj} with pickup offset {pickup_offset_z}')
 
       result = await self.backend.move_labware(
         resource=resource,
@@ -1693,27 +1688,11 @@ class LiquidHandler(Machine):
       elif isinstance(to_obj, ModuleMoveTo):
         self.deck.assign_child_at_slot(resource, to_obj.module_loc)
       elif isinstance(to_obj, AdapterMoveTo):
-        print('WE ARE ON THE RIGHT TRACK!')
         # assign the resource to the adapter
         # atempting to get the adapter at this slot
-        print('DECK SLOTS : ', self.deck.slots)
-        print('ADAPTER SLOTS : ', self.deck.adapter_slots)
         adapter_slot = self.deck.get_adapter_slot(to_obj.obj)
         assert adapter_slot is not None
-        print('adapter_slot:', adapter_slot)
         self.deck.assign_child_at_slot(resource, adapter_slot)
-
-        print('\n\n')
-        print('DECK SLOTS')
-        for idx, res in enumerate(self.deck.slots):
-          print(f'{idx} : {res}')
-
-        print('\n\n')
-        print('ADAPTER SLOTS')
-        for idx, res in enumerate(self.deck.adapter_slots):
-          print(f'{idx} : {res}')
-
-
 
       elif isinstance(to_obj, TransferPlatformMoveTo):
         self.deck.assign_child_at_slot(resource, to_obj.loc)

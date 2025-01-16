@@ -1,5 +1,6 @@
 import sys
 from typing import Dict, Optional, List, cast, Union
+import logging
 
 from pylabrobot.liquid_handling.backends.backend import LiquidHandlerBackend
 from pylabrobot.liquid_handling.errors import NoChannelError
@@ -36,6 +37,8 @@ from pylabrobot.liquid_handling.liquid_handler import (
 )
 
 from pylabrobot.resources.adapters import Adapter
+
+logger = logging.getLogger("pylabrobot")
 
 PYTHON_VERSION = sys.version_info[:2]
 
@@ -171,9 +174,6 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     have well-like attributes such as `displayVolumeUnits` and `totalLiquidVolume`. These seem to
     be ignored when they are not used for aspirating/dispensing.
     """
-    print('\n')
-    print('RESOURCE CALLBACK : ', resource)
-    print('\n')
 
     await super().assigned_resource_callback(resource)
 
@@ -339,10 +339,10 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
 
     # optional labware parameters for opentrons flex gripper
     if resource.grip_force is not None:
-      print('GRIP FORCE FOUND: ', resource.grip_force)
+      logger.info(f'Custom grip force found: {resource.grip_force} for resource {resource.name}')
       lw['gripForce'] = resource.grip_force
     if resource.grip_height_from_labware_bottom is not None:
-      print('GRIP HEIGHT FOUND: ', resource.grip_height_from_labware_bottom)
+      logger.info(f'Custom grip height found: {resource.grip_height_from_labware_bottom} for resource {resource.name}')
       lw['gripHeightFromLabwareBottom'] = resource.grip_height_from_labware_bottom
 
     data = ot_api.labware.define(lw)
@@ -353,12 +353,9 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
 
     # handle the slot name for the opentrons api backend
     slot_obj = convert_move_to_types(slot)
-    # print('SLOT OBJ : ', slot_obj)
     if isinstance(slot_obj, DeckSlotMoveTo):
       location = {'slotName': str(slot_obj.loc)}
     elif isinstance(slot_obj, StagingSlotMoveTo):
-      # print('STAGING SLOT MOVE TO : ',slot_obj )
-      # print('type slot obj loc : ', type(slot_obj.loc))
       location = {'addressableAreaName': slot_obj.matrix_loc}
       slot = slot_obj.matrix_loc
     elif isinstance(slot_obj, TransferPlatformMoveTo):
@@ -377,7 +374,7 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
           integer_deck_slot = self.convert_matrix_deck_slot_to_integer(deck_slot_matrix)
           if integer_deck_slot == slot:
             hs_id = mod_info.get("id")
-            print(f'Heater shaker found in slot {integer_deck_slot} with id: "{hs_id}". Assigning adapter to it.')
+            logger.info(f'Heater shaker found in slot {integer_deck_slot} with id: "{hs_id}". Assigning adapter to it.')
 
             ot_api.labware.add(
               load_name=definition,
@@ -396,11 +393,8 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
 
       existing_slot_adapter = self.deck.adapter_slots[integer_slot-1]
       if isinstance(existing_slot_adapter, Adapter):
-        print('SLOT : ', slot)
-        print('INTEGER SLOT : ', integer_slot)
         # we have an adaper here, so we need to assign the labware to the adapter
-        print('EXISITING SLOT ADAPTER : ', existing_slot_adapter)
-        print('EXISITING SLOT ADAPTER NAME : ', existing_slot_adapter.name)
+        logger.info(f'Existing adapter found in slot {integer_slot}. Assigning labware {resource.name} to it.')
         ot_api.labware.add(
           load_name=definition,
           namespace=namespace,
@@ -503,7 +497,7 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       offset_x = offset_y = offset_z = 0
 
     # ad-hoc offset adjustment that makes it smoother.
-    print('using a flex z offset')
+    logger.info('Using a flex z offset to pick up tips')
     offset_z+= 90
 
     ot_api.lh.pick_up_tip(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
@@ -678,8 +672,6 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     # fixed z offset for aspirate and dispense commands with flex
     offset_z -= self._tip_to_asp_disp_z_offset(tip_max_vol)
 
-    #print('ASPIRATE OFFSET Z : ', offset_z)
-
     # Fix collisions after blowout?
     ot_api.lh.move_to_well(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
       offset_x=offset_x, offset_y=offset_y, offset_z=offset_z)
@@ -746,8 +738,6 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
     # fixed z dimension offsert for aspirate and dispense ops
     offset_z -= self._tip_to_asp_disp_z_offset(tip_max_vol)
 
-    #print('DISPENSE OFFSET Z : ', offset_z)
-
     ot_api.lh.dispense(labware_id, well_name=op.resource.name, pipette_id=pipette_id,
       volume=volume, flow_rate=flow_rate, offset_x=offset_x, offset_y=offset_y, offset_z=offset_z, push_out=push_out)
 
@@ -796,17 +786,11 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       new_location = {'labwareId': labware_id}
     elif isinstance(to, TransferPlatformMoveTo):
       new_location = {'slotName': str(to.loc)}
-      print('ADDING DROP OFFSET Z OF : ', to.height)
       drop_offset_z += to.height
-      print('NEW DROP OFFSET Z : ', drop_offset_z)
-      print('ADDING DROP OFFSET Z BUFFER OF : ', 3.0)
-      drop_offset_z += 3.0
-      print('NEW DROP OFFSET Z : ', drop_offset_z)
-
+      drop_offset_z += 3.0 # extra z offset for buffer on transfer platform
     else:
       raise ValueError
 
-    print('NEW LOCATION : ', new_location)
     ot_api.lh.home_gripper()
 
     # catch RuntimeErrors and handle them gracefully to prevent code from breaking
@@ -824,7 +808,7 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       )
     except RuntimeError as e:
       if str(e) == "Command timed out":
-        print('Warning: moveLabware command timed out, but continuing execution.')
+        logger.warning('Warning: moveLabware command timed out, but continuing execution.')
       else:
         raise
 
