@@ -796,7 +796,13 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       new_location = {'labwareId': labware_id}
     elif isinstance(to, TransferPlatformMoveTo):
       new_location = {'slotName': str(to.loc)}
+      print('ADDING DROP OFFSET Z OF : ', to.height)
       drop_offset_z += to.height
+      print('NEW DROP OFFSET Z : ', drop_offset_z)
+      print('ADDING DROP OFFSET Z BUFFER OF : ', 3.0)
+      drop_offset_z += 3.0
+      print('NEW DROP OFFSET Z : ', drop_offset_z)
+
     else:
       raise ValueError
 
@@ -864,4 +870,15 @@ class OpentronsFlexBackend(LiquidHandlerBackend):
       minimum_z_height=minimum_z_height,
       speed=speed,
       force_direct=force_direct
+    )
+
+
+  async def safe_move_gantry(self):
+    """ Move the gantry to a safe position. """
+
+    ot_api.lh.move_to_coords(
+      x=200.0,
+      y=200.0,
+      z=250.0,
+      pipette_id=self.left_pipette['pipetteId'],
     )

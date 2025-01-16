@@ -1637,6 +1637,9 @@ class LiquidHandler(Machine):
 
     return result
 
+  async def safe_move_gantry(self):
+    """ Move the gantry to a safe position. """
+    await self.backend.safe_move_gantry()
 
 
   async def move_labware_flex(
